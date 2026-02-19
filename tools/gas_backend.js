@@ -22,6 +22,7 @@
 const FOLDER_ID = "1pHdmbCqI8iq2nXmQnqf0FLrdYGffybgO";
 const FEEDBACK_SHEET = "反饋紀錄";
 const CORRECTION_SHEET = "修正指令";
+const ADD_QUESTION_SHEET = "新增題目";
 
 // ── 快取：避免重複讀 Drive（每次部署後 6 小時內同一職類快取）
 const CACHE = CacheService.getScriptCache();
@@ -33,6 +34,9 @@ function onOpen() {
         .createMenu("📚 題庫管理")
         .addItem("📋 建立修正指令分頁", "createCorrectionSheet")
         .addItem("▶️ 執行修正", "applyCorrections")
+        .addSeparator()
+        .addItem("➕ 建立新增題目分頁", "createAddQuestionSheet")
+        .addItem("▶️ 執行新增題目", "addNewQuestions")
         .addSeparator()
         .addItem("🗑️ 清除題庫快取", "clearAllCache")
         .addToUi();
@@ -271,6 +275,189 @@ function updateCategoryTotal(catId, newTotal) {
     } catch (e) {
         // 非致命錯誤，忽略
     }
+}
+
+// ================== 新增題目分頁 ==================
+function createAddQuestionSheet() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(ADD_QUESTION_SHEET);
+
+    if (sheet) {
+        SpreadsheetApp.getUi().alert("「新增題目」分頁已存在！");
+        return;
+    }
+
+    sheet = ss.insertSheet(ADD_QUESTION_SHEET);
+
+    // 表頭
+    const headers = ["職類ID", "題目", "選項A", "選項B", "選項C", "選項D", "答案(ABCD)", "執行狀態"];
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+
+    // 表頭樣式
+    const headerRange = sheet.getRange(1, 1, 1, headers.length);
+    headerRange.setBackground("#2d6a4f");
+    headerRange.setFontColor("#ffffff");
+    headerRange.setFontWeight("bold");
+
+    // 答案欄下拉
+    const ansRule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(["A", "B", "C", "D"], true)
+        .setAllowInvalid(false)
+        .build();
+    sheet.getRange("G2:G500").setDataValidation(ansRule);
+
+    // 欄寬
+    sheet.setColumnWidth(1, 180); // 職類ID
+    sheet.setColumnWidth(2, 400); // 題目
+    sheet.setColumnWidth(3, 200); // 選項A
+    sheet.setColumnWidth(4, 200); // 選項B
+    sheet.setColumnWidth(5, 200); // 選項C
+    sheet.setColumnWidth(6, 200); // 選項D
+    sheet.setColumnWidth(7, 100); // 答案
+    sheet.setColumnWidth(8, 100); // 狀態
+
+    // 範例行
+    sheet.getRange(2, 1, 1, 7).setValues([
+        ["甲種業務主管", "下列何者為正確的安全措施？", "戴安全帽", "穿拖鞋", "不繫安全帶", "不戴手套", "A"]
+    ]);
+    sheet.getRange(2, 1, 1, 7).setFontColor("#999999");
+
+    SpreadsheetApp.getUi().alert("✅ 已建立「新增題目」分頁！\n\n" +
+        "填寫方式：\n" +
+        "  • 職類ID：如「甲種業務主管」「堆高機_本籍」\n" +
+        "  • 題目：完整題目文字\n" +
+        "  • 選項A~D：四個選項\n" +
+        "  • 答案：填 A / B / C / D\n\n" +
+        "填完後點「📚 題庫管理 → ▶️ 執行新增題目」");
+}
+
+// ================== 執行新增題目 ==================
+function addNewQuestions() {
+    const ui = SpreadsheetApp.getUi();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(ADD_QUESTION_SHEET);
+
+    if (!sheet) {
+        ui.alert("找不到「新增題目」分頁！\n\n請先點選「📚 題庫管理 → ➕ 建立新增題目分頁」");
+        return;
+    }
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+        ui.alert("新增題目分頁沒有任何資料！");
+        return;
+    }
+
+    const answerMap = { "A": 0, "B": 1, "C": 2, "D": 3 };
+
+    // 篩選待處理
+    const pending = [];
+    for (let i = 1; i < data.length; i++) {
+        const [catId, question, optA, optB, optC, optD, answer, status] = data[i];
+        if (!catId || !question) continue;
+        if (status === "✅ 已新增" || status === "❌ 失敗") continue;
+        pending.push({
+            row: i + 1,
+            catId: String(catId).trim(),
+            q: String(question).trim(),
+            options: [String(optA).trim(), String(optB).trim(), String(optC).trim(), String(optD).trim()],
+            answer: String(answer).trim().toUpperCase()
+        });
+    }
+
+    if (pending.length === 0) {
+        ui.alert("沒有待處理的新增題目！");
+        return;
+    }
+
+    // 驗證
+    for (const p of pending) {
+        if (!p.q || p.q.length < 3) {
+            sheet.getRange(p.row, 8).setValue("❌ 題目太短");
+            continue;
+        }
+        if (p.options.some(o => !o || o.length === 0)) {
+            sheet.getRange(p.row, 8).setValue("❌ 選項不可為空");
+            continue;
+        }
+        if (answerMap[p.answer] === undefined) {
+            sheet.getRange(p.row, 8).setValue("❌ 答案請填 A/B/C/D");
+            continue;
+        }
+    }
+
+    const confirm = ui.alert(
+        "確認新增",
+        `即將新增 ${pending.length} 題到題庫，確定嗎？`,
+        ui.ButtonSet.YES_NO
+    );
+    if (confirm !== ui.Button.YES) return;
+
+    // 依職類分組
+    const grouped = {};
+    pending.forEach(p => {
+        if (!grouped[p.catId]) grouped[p.catId] = [];
+        grouped[p.catId].push(p);
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const catId of Object.keys(grouped)) {
+        try {
+            const fname = catId + ".json";
+            const file = getFileByName(fname);
+            const content = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
+            const questions = content.questions;
+
+            // 目前最大 id
+            let maxId = questions.reduce((max, q) => Math.max(max, q.id || 0), 0);
+
+            for (const item of grouped[catId]) {
+                try {
+                    if (answerMap[item.answer] === undefined) {
+                        failCount++;
+                        continue;
+                    }
+
+                    maxId++;
+                    questions.push({
+                        q: item.q,
+                        options: item.options,
+                        answer: answerMap[item.answer],
+                        id: maxId
+                    });
+
+                    sheet.getRange(item.row, 8).setValue("✅ 已新增 (id=" + maxId + ")");
+                    successCount++;
+                } catch (err) {
+                    sheet.getRange(item.row, 8).setValue("❌ " + err.message);
+                    failCount++;
+                }
+            }
+
+            // 寫回 JSON
+            content.questions = questions;
+            content.total = questions.length;
+            file.setContent(JSON.stringify(content, null, 2));
+
+            // 更新 categories.json
+            updateCategoryTotal(catId, questions.length);
+
+            // 清快取
+            CACHE.remove("cat_" + catId);
+            CACHE.remove("categories");
+
+        } catch (err) {
+            grouped[catId].forEach(item => {
+                sheet.getRange(item.row, 8).setValue("❌ " + err.message);
+                failCount++;
+            });
+        }
+    }
+
+    ui.alert(`✅ 新增完成！\n\n成功：${successCount} 題\n失敗：${failCount} 題\n\n快取已自動清除，新題目立即生效。`);
 }
 
 // ================== 清除快取 ==================
