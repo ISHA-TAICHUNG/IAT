@@ -144,10 +144,17 @@ function updateHeader() {
         ((current + 1) / questions.length * 100) + "%";
 }
 
-// 提前結束（全域，供 HTML inline onclick 呼叫）
+// 提前結束（用自訂 Modal，不用 confirm 以免被瀏覽器跳過）
 function endEarly() {
-    if (!questions.length) return;  // 題庫還沒載入完就不理
-    if (confirm("確定要提前結束作答並查看成績？")) finishExam();
+    if (!questions.length) return;
+    document.getElementById("end-confirm-modal").classList.add("open");
+}
+function closeEndConfirm() {
+    document.getElementById("end-confirm-modal").classList.remove("open");
+}
+function confirmEnd() {
+    closeEndConfirm();
+    finishExam();
 }
 
 function finishExam() {

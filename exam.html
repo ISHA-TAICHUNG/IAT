@@ -50,6 +50,27 @@
         </div>
     </div>
 
+    <!-- 提前結束確認 Modal -->
+    <div class="modal-backdrop" id="end-confirm-modal" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="notice-icon warning" style="margin-bottom:12px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width:26px;height:26px">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+            </div>
+            <h3 style="text-align:center;margin-bottom:8px">確定要提前結束？</h3>
+            <p style="text-align:center;color:var(--gray-500);font-size:.88rem;margin-bottom:20px">
+                尚未作答的題目將不計分，確定要結束並查看成績嗎？</p>
+            <div class="modal-actions" style="justify-content:center">
+                <button class="btn btn-outline" onclick="closeEndConfirm()">繼續作答</button>
+                <button class="btn btn-primary" style="background:var(--danger)" onclick="confirmEnd()">確定結束</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 反饋 Modal -->
     <div class="modal-backdrop" id="feedback-modal">
         <div class="modal">
