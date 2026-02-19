@@ -147,7 +147,7 @@ function isBookmarked(catId, questionId) {
 }
 
 // ===== 共用反饋提交 =====
-async function submitFeedbackCommon({ catName, questionId, questionText, typeElId, descElId, modalEl, btn }) {
+async function submitFeedbackCommon({ catName, questionId, questionText, options, typeElId, descElId, modalEl, btn }) {
     if (btn.disabled) return;
     btn.disabled = true;
     btn.textContent = "送出中…";
@@ -166,6 +166,10 @@ async function submitFeedbackCommon({ catName, questionId, questionText, typeElI
                 catName,
                 questionId,
                 question: questionText,
+                optionA: options?.[0] || "",
+                optionB: options?.[1] || "",
+                optionC: options?.[2] || "",
+                optionD: options?.[3] || "",
                 feedbackType: type,
                 description: desc,
             }),

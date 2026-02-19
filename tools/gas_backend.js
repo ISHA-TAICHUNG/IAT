@@ -94,7 +94,7 @@ function createCorrectionSheet() {
         ["📝 一、修正題目（修正指令分頁）"],
         ["════════════════════════════════════════"],
         [""],
-        ["步驟 1：到「反饋紀錄」分頁查看使用者回報的問題"],
+        ["步驟 1：到「反饋紀錄」分頁查看使用者回報的問題（含題目、四個選項、反饋類型）"],
         ["步驟 2：到「修正指令」分頁填寫修正內容"],
         ["步驟 3：點選上方選單「📚 題庫管理 → ▶️ 執行修正」"],
         ["步驟 4：完成！回到「反饋紀錄」將對應反饋標記為「是」"],
@@ -603,9 +603,9 @@ function saveFeedback(body) {
 
     if (!sheet) {
         sheet = ss.insertSheet(FEEDBACK_SHEET);
-        sheet.appendRow(["時間", "職類", "題目ID", "題目", "反饋類型", "補充說明", "已處理", "次數"]);
+        sheet.appendRow(["時間", "職類", "題目ID", "題目", "選項A", "選項B", "選項C", "選項D", "反饋類型", "補充說明", "已處理", "次數"]);
         sheet.setFrozenRows(1);
-        const headerRange = sheet.getRange(1, 1, 1, 8);
+        const headerRange = sheet.getRange(1, 1, 1, 12);
         headerRange.setBackground("#1a56db");
         headerRange.setFontColor("#ffffff");
         headerRange.setFontWeight("bold");
@@ -615,14 +615,14 @@ function saveFeedback(body) {
     const lastRow = sheet.getLastRow();
     const checkRows = Math.min(50, lastRow - 1);
     if (checkRows > 0) {
-        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 8).getValues();
+        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 12).getValues();
         for (let i = data.length - 1; i >= 0; i--) {
-            if (String(data[i][2]) === String(body.questionId) && data[i][4] === (body.feedbackType || "")) {
+            if (String(data[i][2]) === String(body.questionId) && data[i][8] === (body.feedbackType || "")) {
                 // 找到重複，更新次數
                 const row = lastRow - checkRows + 1 + i;
-                const currentCount = Number(data[i][7]) || 1;
-                sheet.getRange(row, 8).setValue(currentCount + 1);
-                sheet.getRange(row, 1).setValue(body.timestamp || new Date().toISOString()); // 更新時間
+                const currentCount = Number(data[i][11]) || 1;
+                sheet.getRange(row, 12).setValue(currentCount + 1);
+                sheet.getRange(row, 1).setValue(body.timestamp || new Date().toISOString());
                 return;
             }
         }
@@ -633,6 +633,10 @@ function saveFeedback(body) {
         body.catName || "",
         body.questionId || "",
         body.question || "",
+        body.optionA || "",
+        body.optionB || "",
+        body.optionC || "",
+        body.optionD || "",
         body.feedbackType || "",
         body.description || "",
         "否",

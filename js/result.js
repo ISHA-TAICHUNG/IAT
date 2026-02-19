@@ -139,6 +139,7 @@ async function submitResultFeedback() {
     catName,
     questionId: q.id,
     questionText: q.q,
+    options: q.options,
     typeElId: "result-fb-type",
     descElId: "result-fb-desc",
     modalEl: document.getElementById("result-fb-modal"),
