@@ -4,9 +4,6 @@ const CONFIG = {
     // 同時負責：取職類清單、取題目、接收反饋
     GAS_URL: "https://script.google.com/macros/s/AKfycbyLH1aSgL7KM4wNSrUFMPKBYASFG7JtllNjlzfhNDrO132SE_6_JIX40_qTdug7qUsS/exec",
 
-    // 每次測驗題數
-    EXAM_QUESTIONS: 80,
-
     // 滿分 & 每題分數
     FULL_SCORE: 100,
     SCORE_PER_Q: 1.25,
@@ -14,6 +11,10 @@ const CONFIG = {
     // 及格分數
     PASS_SCORE: 60,
 
-    // 答題時間限制（分鐘）
-    EXAM_TIME_LIMIT: 80,
+    // 測驗模式
+    MODES: {
+        normal: { label: "標準模式", questions: 80, time: 80, icon: "📋" },
+        speed:  { label: "急速模式", questions: 20, time: 20, icon: "⚡" },
+    },
+    DEFAULT_MODE: "normal",
 };

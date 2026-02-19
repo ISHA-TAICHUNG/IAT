@@ -1,16 +1,17 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20250220";
+const CACHE_NAME = "exam-v20250219b";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
     "./exam.html",
     "./result.html",
-    "./css/style.css?v=20250220",
-    "./js/config.js?v=20250220",
-    "./js/utils.js?v=20250220",
-    "./js/app.js?v=20250220",
-    "./js/exam.js?v=20250220",
-    "./js/result.js?v=20250220",
+    "./manifest.json",
+    "./css/style.css?v=20250219b",
+    "./js/config.js?v=20250219b",
+    "./js/utils.js?v=20250219b",
+    "./js/app.js?v=20250219b",
+    "./js/exam.js?v=20250219b",
+    "./js/result.js?v=20250219b",
 ];
 
 // 安裝：預快取靜態資源

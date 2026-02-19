@@ -2,6 +2,7 @@
 const params = new URLSearchParams(location.search);
 const CAT_ID = params.get("cat");
 const MODE = params.get("mode"); // "review" = 錯題複習模式
+const EXAM_MODE = params.get("examMode") || CONFIG.DEFAULT_MODE; // "normal" | "speed"
 
 let questions = [];
 let catName = "";
@@ -10,11 +11,35 @@ let answers = [];      // answers[i] = { chosen: number|null, hinted: bool }
 
 // 計時器
 let timerInterval = null;
-let timerSeconds = CONFIG.EXAM_TIME_LIMIT * 60; // 80分鐘
+let modeConfig = CONFIG.MODES[EXAM_MODE] || CONFIG.MODES.normal;
+let timerSeconds = modeConfig.time * 60;
 
 // ===== 初始化 =====
 async function init() {
     if (!CAT_ID) { location.href = "index.html"; return; }
+
+    // 嘗試恢復存檔
+    const saved = loadProgress();
+    if (saved && saved.catId === CAT_ID && saved.examMode === EXAM_MODE && MODE !== "review") {
+        questions = saved.questions;
+        answers = saved.answers;
+        current = saved.current;
+        timerSeconds = saved.timerSeconds;
+        catName = saved.catName;
+
+        document.title = `${escapeHtml(catName)} — 作答中`;
+        document.getElementById("exam-title").textContent = catName;
+        document.getElementById("q-total").textContent = questions.length;
+        document.getElementById("loading").remove();
+
+        renderQuestion();
+        updateHeader();
+        renderNav();
+        startTimer();
+        document.addEventListener("keydown", handleKey);
+        showToast("📂 已恢復上次進度");
+        return;
+    }
 
     try {
         if (MODE === "review") {
@@ -24,21 +49,24 @@ async function init() {
             questions = JSON.parse(stored);
             catName = CAT_ID + "（錯題複習）";
         } else {
-            // 一般模式：從 GAS 取 80 題
+            // 一般模式：從 GAS 取題
             const res = await fetchWithTimeout(
                 `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}`
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-            questions = data;
-            catName = CAT_ID;
+
+            // 急速模式抽指定題數
+            const numQ = modeConfig.questions;
+            questions = shuffleArray(data).slice(0, numQ);
+            catName = EXAM_MODE === "speed" ? `${CAT_ID}（急速模式）` : CAT_ID;
         }
 
         // 隨機排列每題選項
         questions.forEach(q => shuffleOptions(q));
 
-        document.title = `${catName} — 作答中`;
+        document.title = `${escapeHtml(catName)} — 作答中`;
         document.getElementById("exam-title").textContent = catName;
 
         answers = questions.map(() => ({ chosen: null, hinted: false }));
@@ -48,11 +76,13 @@ async function init() {
 
         renderQuestion();
         updateHeader();
+        renderNav();
         startTimer();
         document.addEventListener("keydown", handleKey);
     } catch (e) {
+        console.warn("載入題庫失敗：", e);
         document.getElementById("loading").innerHTML =
-            `<p style="color:red;padding:40px 0">載入題庫失敗：${e.message}<br>請確認網路連線正常或稍後再試。</p>
+            `<p style="color:red;padding:40px 0">載入題庫失敗：${escapeHtml(e.message)}<br>請確認網路連線正常或稍後再試。</p>
        <a href="index.html" class="btn btn-outline" style="margin-top:12px">← 返回首頁</a>`;
     }
 }
@@ -79,11 +109,43 @@ function startTimer() {
     }, 1000);
 }
 
+// ===== 題目導覽列 =====
+function renderNav() {
+    let navEl = document.getElementById("q-nav");
+    if (!navEl) {
+        navEl = document.createElement("div");
+        navEl.id = "q-nav";
+        navEl.className = "q-nav";
+        // 插到 exam-header 後面
+        const header = document.querySelector(".exam-header");
+        if (header) header.after(navEl);
+    }
+
+    navEl.innerHTML = questions.map((q, i) => {
+        const ans = answers[i];
+        let cls = "nav-dot";
+        if (i === current) cls += " active";
+        if (ans.chosen !== null) cls += " answered";
+        if (ans.hinted) cls += " hinted";
+        if (isBookmarked(CAT_ID, q.id)) cls += " bookmarked";
+        return `<button class="${cls}" onclick="goTo(${i})" title="第 ${i + 1} 題">${i + 1}</button>`;
+    }).join("");
+}
+
+function goTo(idx) {
+    if (idx < 0 || idx >= questions.length) return;
+    current = idx;
+    renderQuestion();
+    updateHeader();
+    renderNav();
+}
+
 // ===== 渲染題目 =====
 function renderQuestion() {
     const q = questions[current];
     const ans = answers[current];
     const isAnswered = ans.chosen !== null || ans.hinted;
+    const bookmarked = isBookmarked(CAT_ID, q.id);
 
     const noScoreBadge = ans.hinted
         ? `<div class="no-score-badge">💡 此題不列入計分</div>` : "";
@@ -93,8 +155,13 @@ function renderQuestion() {
     <div class="question-wrap">
       <div class="question-card">
         ${noScoreBadge}
-        <div class="q-number">第 ${current + 1} 題 / 共 ${questions.length} 題</div>
-        <div class="q-text">${q.q}</div>
+        <div class="q-top-row">
+          <div class="q-number">第 ${current + 1} 題 / 共 ${questions.length} 題</div>
+          <button class="btn-bookmark ${bookmarked ? "active" : ""}" onclick="toggleBm()" title="${bookmarked ? "取消收藏" : "收藏此題"}">
+            ${bookmarked ? "★" : "☆"}
+          </button>
+        </div>
+        <div class="q-text">${escapeHtml(q.q)}</div>
         <div class="options-list" id="options">
           ${q.options.map((opt, i) => {
         let cls = "";
@@ -105,7 +172,7 @@ function renderQuestion() {
         return `
               <button class="option-btn ${cls}" onclick="selectOption(${i})" ${isAnswered ? "disabled" : ""}>
                 <span class="option-label">${LABELS[i]}</span>
-                <span>${opt}</span>
+                <span>${escapeHtml(opt)}</span>
               </button>`;
     }).join("")}
         </div>
@@ -113,10 +180,10 @@ function renderQuestion() {
           id="answer-hint">
           ${isAnswered
             ? ans.hinted && ans.chosen === null
-                ? `💡 正確答案為：${LABELS[q.answer]}. ${q.options[q.answer]}（已查看答案，此題不列入計分）`
+                ? `💡 正確答案為：${escapeHtml(q.options[q.answer])}（已查看答案，此題不列入計分）`
                 : ans.chosen === q.answer
                     ? "✅ 答對了！"
-                    : `❌ 答錯了，正確答案為：${LABELS[q.answer]}. ${q.options[q.answer]}`
+                    : `❌ 答錯了，正確答案為：${escapeHtml(q.options[q.answer])}`
             : ""}
         </div>
       </div>
@@ -140,6 +207,8 @@ function selectOption(idx) {
     ans.chosen = idx;
     renderQuestion();
     updateHeader();
+    renderNav();
+    autoSave();
 }
 
 function showHint() {
@@ -148,13 +217,22 @@ function showHint() {
     ans.hinted = true;
     renderQuestion();
     updateHeader();
+    renderNav();
+    autoSave();
 }
 
-function prevQ() { if (current > 0) { current--; renderQuestion(); updateHeader(); } }
+function prevQ() { if (current > 0) { current--; renderQuestion(); updateHeader(); renderNav(); } }
 
 function nextQ() {
-    if (current < questions.length - 1) { current++; renderQuestion(); updateHeader(); }
+    if (current < questions.length - 1) { current++; renderQuestion(); updateHeader(); renderNav(); }
     else finishExam();
+}
+
+function toggleBm() {
+    const q = questions[current];
+    toggleBookmark(CAT_ID, q.id);
+    renderQuestion();
+    renderNav();
 }
 
 function handleKey(e) {
@@ -179,6 +257,21 @@ function updateHeader() {
         ((current + 1) / questions.length * 100) + "%";
 }
 
+// ===== 中途存檔 =====
+function autoSave() {
+    if (MODE === "review") return; // 錯題複習不存檔
+    saveProgress({
+        catId: CAT_ID,
+        catName,
+        examMode: EXAM_MODE,
+        questions,
+        answers,
+        current,
+        timerSeconds,
+        savedAt: new Date().toISOString(),
+    });
+}
+
 // ===== 提前結束 =====
 function endEarly() {
     if (!questions.length) return;
@@ -194,9 +287,13 @@ function confirmEnd() {
 
 function finishExam() {
     if (timerInterval) clearInterval(timerInterval);
-    const elapsed = (CONFIG.EXAM_TIME_LIMIT * 60) - timerSeconds;
+    const totalTime = modeConfig.time * 60;
+    const elapsed = totalTime - timerSeconds;
 
-    const resultData = { catId: CAT_ID, catName, questions, answers, elapsed };
+    // 清除存檔
+    clearProgress();
+
+    const resultData = { catId: CAT_ID, catName, questions, answers, elapsed, examMode: EXAM_MODE };
     sessionStorage.setItem("examResult", JSON.stringify(resultData));
 
     // 回報統計到 GAS（fire-and-forget）
@@ -214,10 +311,11 @@ function finishExam() {
                 correct: realCorrect,
                 total: questions.length,
                 elapsed,
+                mode: EXAM_MODE,
                 timestamp: new Date().toISOString(),
             }),
-        }).catch(() => { }); // 忽略錯誤
-    } catch { }
+        }).catch(e => console.warn("統計回報失敗：", e));
+    } catch (e) { console.warn("統計回報失敗：", e); }
 
     location.href = "result.html";
 }
@@ -234,39 +332,16 @@ function closeFeedback() {
 }
 
 async function submitFeedback() {
-    const btn = document.querySelector('#feedback-modal .btn-primary');
-    if (btn.disabled) return;
-    btn.disabled = true;
-    btn.textContent = "送出中…";
-
-    const type = document.getElementById("fb-type").value;
-    const desc = document.getElementById("fb-desc").value.trim();
     const q = questions[feedbackQIndex];
-
-    try {
-        await fetchWithTimeout(CONFIG.GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "feedback",
-                timestamp: new Date().toISOString(),
-                catName,
-                questionId: q.id,
-                question: q.q,
-                feedbackType: type,
-                description: desc,
-            }),
-        });
-        showToast("✅ 反饋已送出，感謝你！");
-    } catch {
-        showToast("⚠️ 反饋送出失敗，請稍後再試。");
-    }
-
-    btn.disabled = false;
-    btn.textContent = "送出";
-    closeFeedback();
-    document.getElementById("fb-desc").value = "";
+    await submitFeedbackCommon({
+        catName,
+        questionId: q.id,
+        questionText: q.q,
+        typeElId: "fb-type",
+        descElId: "fb-desc",
+        modalEl: document.getElementById("feedback-modal"),
+        btn: document.querySelector('#feedback-modal .btn-primary'),
+    });
 }
 
 // ===== 啟動 =====

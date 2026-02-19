@@ -6,10 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理職類暨即測即評電腦化測驗 線上練習</title>
   <meta name="description" content="職業安全衛生管理職類測驗線上練習系統，隨機抽題80題即測即評。免費使用，歡迎一同維護題庫品質。" />
+  <meta property="og:title" content="管理職類測驗 線上練習" />
+  <meta property="og:description" content="職業安全衛生管理職類測驗系統，隨機80題即測即評，支援急速模式、錯題複習、離線作答。" />
+  <meta property="og:type" content="website" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20250220" />
+  <link rel="stylesheet" href="css/style.css?v=20250219b" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
@@ -77,6 +80,7 @@
         <h1>管理職類測驗 線上練習</h1>
         <p class="header-sub">職業安全衛生 — 即測即評</p>
       </div>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
     </div>
   </header>
 
@@ -84,7 +88,7 @@
     <div class="selector-card">
       <div class="selector-header">
         <h2>選擇練習職類</h2>
-        <p>從下拉選單選取職類，系統將隨機抽選 <strong>80 題</strong>，滿分 100 分，60 分及格。</p>
+        <p>從下拉選單選取職類，系統將隨機抽選題目作答，滿分 100 分，60 分及格。</p>
       </div>
 
       <div class="select-wrap" id="select-wrap">
@@ -111,8 +115,8 @@
           </svg>
         </div>
         <div>
-          <strong>80 題限時作答</strong>
-          <span>隨機抽題，每次不同</span>
+          <strong>限時作答</strong>
+          <span>標準 80 題 / 急速 20 題</span>
         </div>
       </div>
       <div class="info-card">
@@ -145,9 +149,9 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/config.js?v=20250220"></script>
-  <script src="js/utils.js?v=20250220"></script>
-  <script src="js/app.js?v=20250220"></script>
+  <script src="js/config.js?v=20250219b"></script>
+  <script src="js/utils.js?v=20250219b"></script>
+  <script src="js/app.js?v=20250219b"></script>
   <script>
     // PWA Service Worker 註冊
     if ('serviceWorker' in navigator) {
