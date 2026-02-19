@@ -14,7 +14,7 @@
  */
 
 // ★ 填入你的 Google Drive 資料夾 ID
-const FOLDER_ID = "YOUR_DRIVE_FOLDER_ID";
+const FOLDER_ID = "1pHdmbCqI8iq2nXmQnqf0FLrdYGffybgO";
 const FEEDBACK_SHEET = "反饋紀錄";
 
 // ── 快取：避免重複讀 Drive（每次部署後 6 小時內同一職類快取）
