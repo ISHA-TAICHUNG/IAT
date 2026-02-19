@@ -2,9 +2,21 @@
 const LANG_LABELS = {
   印尼: { native: "Bahasa Indonesia", flag: "🇮🇩" },
   菲律賓: { native: "Filipino", flag: "🇵🇭" },
-  泰國: { native: "ภาษาไทย", flag: "🇹🇭" },
+  泰國籍: { native: "ภาษาไทย", flag: "🇹🇭" },
+  泰籍: { native: "ภาษาไทย", flag: "🇹🇭" },
   越南: { native: "Tiếng Việt", flag: "🇻🇳" },
 };
+
+// 職類 emoji
+const JOB_EMOJI = [
+  { keyword: "堆高機", emoji: "🚜" },
+  { keyword: "固定式起重機", emoji: "🏗️" },
+];
+
+function getJobEmoji(catName) {
+  const match = JOB_EMOJI.find((j) => catName.includes(j.keyword));
+  return match ? match.emoji + " " : "";
+}
 
 // 從職類名稱判斷是否外籍移工並取得翻譯
 function getForeignLabel(catName) {
@@ -43,8 +55,9 @@ function renderDropdown(cats) {
             ${groups[g]
             .map((cat) => {
               const fl = getForeignLabel(cat.name);
+              const jobEmoji = fl ? getJobEmoji(cat.name) : "";
               const label = fl
-                ? `${cat.name}　${fl.flag} ${fl.native}`
+                ? `${jobEmoji}${cat.name}　${fl.flag} ${fl.native}`
                 : cat.name;
               return `<option value="${cat.id}" data-total="${cat.total}">${label}</option>`;
             })
