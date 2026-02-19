@@ -13,39 +13,45 @@
 - 💬 每道題可送出反饋 → 自動記錄至 Google Sheet
 - ⌨️ 鍵盤快捷鍵支援（數字鍵 1-4 選答，→ 下一題，← 上一題）
 
-## 快速開始（本機）
+## 架構說明
 
-```bash
-cd exam-site
-python3 -m http.server 8080
-# 開啟 http://localhost:8080
+```
+GitHub Pages (HTML/CSS/JS 前端)
+        ↓ fetch
+Google Apps Script (Web App)
+        ↓ 讀取
+Google Drive 私人資料夾 (題庫 JSON)
 ```
 
-## 題庫更新流程
+題庫 JSON **不放進 git repo**，存放於私人 Google Drive，由 GAS 代理讀取並隨機抽 80 題回傳。
 
-1. 將新的 xlsx 放至 `../`（上層資料夾）
-2. 更新 `tools/convert_xlsx.py` 的 `CATEGORIES` 設定（如有新職類）
-3. 執行：
-   ```bash
-   python3 tools/convert_xlsx.py
-   ```
-4. 提交並推送：
-   ```bash
-   git add data/
-   git commit -m "update: 更新題庫 YYYY-MM-DD"
-   git push
-   ```
+## 初次設定步驟
 
-## 設定 Google Apps Script（反饋功能）
+### 1. 上傳題庫到 Google Drive
+1. 執行 `python3 tools/convert_xlsx.py`（產出到 `data/`）
+2. 在 Google Drive 建立一個**私人**資料夾
+3. 將 `data/` 裡所有 json 檔上傳到該資料夾
+4. 記下資料夾 URL 裡的 **Folder ID**（最後一段）
 
-1. 新建一個 Google Sheet
+### 2. 設定 Google Apps Script
+1. 新建一個 Google Sheet（做反饋紀錄用）
 2. 工具 → 指令碼編輯器
-3. 貼上 `tools/gas_feedback.js` 的內容
-4. 部署 → 新增部署 → 網頁應用程式
+3. 貼上 `tools/gas_backend.js` 的內容
+4. 將 `FOLDER_ID` 填入你的 Drive 資料夾 ID
+5. 部署 → 新增部署 → 網頁應用程式
    - 執行身分：**我**
    - 存取權限：**所有人（含匿名）**
-5. 複製 Web App URL
-6. 填入 `js/config.js` 的 `GAS_URL`
+6. 複製 **Web App URL**
+
+### 3. 填入前端設定
+
+編輯 `js/config.js`，將 `GAS_URL` 改為步驟 6 的 URL。
+
+### 4. 題庫更新流程
+
+1. 更新 xlsx → 執行 `python3 tools/convert_xlsx.py`
+2. 重新上傳 `data/*.json` 到 Google Drive（覆蓋舊檔）
+3. GAS 快取 6 小時自動更新，或重新部署 GAS 立即生效
 
 ## 部署（GitHub Pages）
 
