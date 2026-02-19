@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理職類暨即測即評電腦化測驗 線上練習</title>
+  <meta name="description" content="職業安全衛生管理職類測驗線上練習系統，隨機抽題80題即測即評。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <span class="header-logo">📋</span>
+      <h1>管理職類測驗線上練習 <span class="subtitle">— 職業安全衛生</span></h1>
+    </div>
+  </header>
+
+  <main class="container">
+    <h2 class="page-title">選擇練習職類</h2>
+    <p class="page-desc">系統將從所選職類題庫中隨機抽選 <strong>80 題</strong>，滿分 100 分，60 分及格。</p>
+    <div id="cat-container">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>載入中…</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

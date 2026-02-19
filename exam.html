@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>作答中 — 管理職類測驗線上練習</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="inner">
+            <span class="header-logo">📋</span>
+            <h1 id="exam-title">載入中…</h1>
+        </div>
+    </header>
+
+    <div class="exam-header">
+        <div class="inner">
+            <div class="exam-meta">
+                第 <strong id="q-current">1</strong> 題 / <strong id="q-total">80</strong> 題
+            </div>
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+            </div>
+            <div class="exam-meta">
+                已答 <strong id="answered-count">0</strong> 題
+            </div>
+            <button class="btn-end-early" id="btn-end">提前結束</button>
+        </div>
+    </div>
+
+    <div id="main-area">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>載入題庫中…</p>
+        </div>
+    </div>
+
+    <!-- 反饋 Modal -->
+    <div class="modal-backdrop" id="feedback-modal">
+        <div class="modal">
+            <h3>💬 題目反饋</h3>
+            <label>反饋類型</label>
+            <select id="fb-type">
+                <option value="題目有誤">題目有誤</option>
+                <option value="答案有誤">答案有誤</option>
+                <option value="選項有誤">選項有誤</option>
+                <option value="其他">其他</option>
+            </select>
+            <label>補充說明（選填）</label>
+            <textarea id="fb-desc" placeholder="請描述問題…"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeFeedback()">取消</button>
+                <button class="btn btn-primary" onclick="submitFeedback()">送出</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/exam.js"></script>
+</body>
+
+</html>
