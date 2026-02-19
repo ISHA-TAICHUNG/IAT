@@ -10,13 +10,14 @@
  *
  * GET  ?action=categories           → 回傳職類清單
  * GET  ?action=questions&cat=ID     → 回傳 80 題（已隨機抽取）
- * POST { action:"feedback", ... }  → 寫入反饋 Sheet
+ * POST { action:"feedback", ... }  → 寫入反饋 Sheet（自動去重）
+ * POST { action:"logResult", ... } → 寫入測驗統計 Sheet
  *
  * 自訂選單「題庫管理」：
  * - 建立修正指令分頁  → 初始化修正指令工作表 + 題庫管理說明
- * - 執行修正          → 讀取修正指令，自動修改 Drive 上的 JSON
+ * - 執行修正          → 讀取修正指令，自動修改 Drive 上的 JSON（修改前自動備份）
  * - 建立新增題目分頁  → 初始化新增題目工作表
- * - 執行新增題目      → 批次新增題目到 Drive JSON
+ * - 執行新增題目      → 批次新增題目到 Drive JSON（新增前自動備份）
  * - 清除題庫快取      → 強制清除 GAS 快取
  */
 
@@ -25,6 +26,7 @@ const FOLDER_ID = "1pHdmbCqI8iq2nXmQnqf0FLrdYGffybgO";
 const FEEDBACK_SHEET = "反饋紀錄";
 const CORRECTION_SHEET = "修正指令";
 const ADD_QUESTION_SHEET = "新增題目";
+const STATS_SHEET = "測驗統計";
 
 // ── 快取：避免重複讀 Drive（每次部署後 6 小時內同一職類快取）
 const CACHE = CacheService.getScriptCache();
@@ -278,6 +280,7 @@ function applyCorrections() {
 
             // 如果有修改，更新 categories.json 的 total 並寫回 JSON
             if (modified) {
+                backupFile(catId + ".json");
                 content.questions = questions;
                 file.setContent(JSON.stringify(content, null, 2));
 
@@ -475,7 +478,8 @@ function addNewQuestions() {
                 }
             }
 
-            // 寫回 JSON
+            // 備份 + 寫回 JSON
+            backupFile(catId + ".json");
             content.questions = questions;
             content.total = questions.length;
             file.setContent(JSON.stringify(content, null, 2));
@@ -540,6 +544,10 @@ function doPost(e) {
             saveFeedback(body);
             return jsonResponse({ success: true });
         }
+        if (body.action === "logResult") {
+            logExamResult(body);
+            return jsonResponse({ success: true });
+        }
         return jsonResponse({ error: "未知 action" }, 400);
     } catch (err) {
         return jsonResponse({ error: err.message }, 500);
@@ -588,20 +596,36 @@ function getQuestions(catId, count) {
     return arr.slice(0, Math.min(count, arr.length));
 }
 
-// ─────────────────────────── 反饋寫入 ────────────────────────────
+// ─────────────────────────── 反饋寫入（自動去重）────────────────────────────
 function saveFeedback(body) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(FEEDBACK_SHEET);
 
     if (!sheet) {
         sheet = ss.insertSheet(FEEDBACK_SHEET);
-        sheet.appendRow(["時間", "職類", "題目ID", "題目", "反饋類型", "補充說明", "已處理"]);
+        sheet.appendRow(["時間", "職類", "題目ID", "題目", "反饋類型", "補充說明", "已處理", "次數"]);
         sheet.setFrozenRows(1);
-        // 表頭樣式
-        const headerRange = sheet.getRange(1, 1, 1, 7);
+        const headerRange = sheet.getRange(1, 1, 1, 8);
         headerRange.setBackground("#1a56db");
         headerRange.setFontColor("#ffffff");
         headerRange.setFontWeight("bold");
+    }
+
+    // 去重：檢查最近 50 行是否有相同 題目ID + 反饋類型
+    const lastRow = sheet.getLastRow();
+    const checkRows = Math.min(50, lastRow - 1);
+    if (checkRows > 0) {
+        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 8).getValues();
+        for (let i = data.length - 1; i >= 0; i--) {
+            if (String(data[i][2]) === String(body.questionId) && data[i][4] === (body.feedbackType || "")) {
+                // 找到重複，更新次數
+                const row = lastRow - checkRows + 1 + i;
+                const currentCount = Number(data[i][7]) || 1;
+                sheet.getRange(row, 8).setValue(currentCount + 1);
+                sheet.getRange(row, 1).setValue(body.timestamp || new Date().toISOString()); // 更新時間
+                return;
+            }
+        }
     }
 
     sheet.appendRow([
@@ -612,7 +636,53 @@ function saveFeedback(body) {
         body.feedbackType || "",
         body.description || "",
         "否",
+        1,
     ]);
+}
+
+// ─────────────────────────── 測驗統計 ────────────────────────────
+function logExamResult(body) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(STATS_SHEET);
+
+    if (!sheet) {
+        sheet = ss.insertSheet(STATS_SHEET);
+        sheet.appendRow(["時間", "職類", "分數", "答對", "總題數", "用時(秒)"]);
+        sheet.setFrozenRows(1);
+        const headerRange = sheet.getRange(1, 1, 1, 6);
+        headerRange.setBackground("#057a55");
+        headerRange.setFontColor("#ffffff");
+        headerRange.setFontWeight("bold");
+    }
+
+    sheet.appendRow([
+        body.timestamp || new Date().toISOString(),
+        body.catId || "",
+        body.score || 0,
+        body.correct || 0,
+        body.total || 0,
+        body.elapsed || 0,
+    ]);
+}
+
+// ─────────────────────────── 自動備份 ────────────────────────────
+function backupFile(fileName) {
+    try {
+        const folder = DriveApp.getFolderById(FOLDER_ID);
+        const backupFolders = folder.getFoldersByName("_backup");
+        let backupFolder;
+        if (backupFolders.hasNext()) {
+            backupFolder = backupFolders.next();
+        } else {
+            backupFolder = folder.createFolder("_backup");
+        }
+        const file = getFileByName(fileName);
+        const timestamp = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd_HHmmss");
+        file.makeCopy(fileName.replace(".json", "_" + timestamp + ".json"), backupFolder);
+    } catch (e) {
+        // 備份失敗不阻擋修正流程
+        Logger.log("備份失敗: " + fileName + " - " + e.message);
+    }
 }
 
 // ──────────────────────── 工具函式 ───────────────────────────────

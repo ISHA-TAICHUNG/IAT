@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=20250219b" />
+    <link rel="stylesheet" href="css/style.css?v=20250220" />
 </head>
 
 <body>
@@ -38,6 +38,13 @@
             </div>
             <div class="exam-meta">
                 已答 <strong id="answered-count">0</strong> 題
+            </div>
+            <div class="timer" id="timer" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                </svg>
+                <span id="timer-text">80:00</span>
             </div>
             <button class="btn-end-early" id="btn-end" onclick="endEarly()">提前結束</button>
         </div>
@@ -93,8 +100,9 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="js/config.js?v=20250219b"></script>
-    <script src="js/exam.js?v=20250219b"></script>
+    <script src="js/config.js?v=20250220"></script>
+    <script src="js/utils.js?v=20250220"></script>
+    <script src="js/exam.js?v=20250220"></script>
 </body>
 
 </html>

@@ -1,0 +1,22 @@
+{
+    "name": "管理職類測驗 線上練習",
+    "short_name": "職安測驗",
+    "description": "職業安全衛生管理職類測驗線上練習系統",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#1e293b",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icons/icon-192.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "icons/icon-512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

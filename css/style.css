@@ -916,6 +916,139 @@ a {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ===== Timer ===== */
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--gray-800);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: .82rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-warn {
+  background: var(--danger);
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .7;
+  }
+}
+
+/* ===== No-Score Badge ===== */
+.no-score-badge {
+  background: var(--warning-light);
+  color: var(--warning);
+  font-size: .8rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+/* ===== Review Button ===== */
+.btn-review {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+}
+
+.btn-review:hover {
+  background: var(--accent-dark);
+}
+
+/* ===== History Card ===== */
+.history-card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-top: 20px;
+}
+
+.history-card h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 14px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+  border: 1px solid var(--gray-200);
+  transition: all .15s;
+}
+
+.history-item.latest {
+  background: var(--primary-light);
+  border-color: rgba(232, 93, 4, .2);
+}
+
+.hi-cat {
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.hi-badge {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-size: .7rem;
+  padding: 1px 6px;
+  border-radius: 99px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.hi-score {
+  font-weight: 700;
+  font-size: .9rem;
+}
+
+.hi-score.pass {
+  color: var(--success);
+}
+
+.hi-score.fail {
+  color: var(--danger);
+}
+
+.hi-detail {
+  color: var(--gray-500);
+  font-size: .8rem;
+}
+
+.hi-date {
+  color: var(--gray-400);
+  font-size: .78rem;
+}
+
 /* ===== RWD ===== */
 @media (max-width: 600px) {
   .selector-card {
@@ -950,6 +1083,16 @@ a {
 
   .modal {
     padding: 24px 18px;
+  }
+
+  .history-item {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
+
+  .hi-detail,
+  .hi-date {
+    grid-column: 1 / -1;
   }
 }
 

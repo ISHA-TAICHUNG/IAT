@@ -1,43 +1,45 @@
 // ===== 狀態 =====
 const params = new URLSearchParams(location.search);
 const CAT_ID = params.get("cat");
+const MODE = params.get("mode"); // "review" = 錯題複習模式
 
-let questions = [];    // 本次抽到的 80 題（由 GAS 隨機抽好）
+let questions = [];
 let catName = "";
 let current = 0;
 let answers = [];      // answers[i] = { chosen: number|null, hinted: bool }
 
-// ===== 工具 =====
-function showToast(msg, dur = 2200) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), dur);
-}
-
-const LABELS = ["A", "B", "C", "D"];
+// 計時器
+let timerInterval = null;
+let timerSeconds = CONFIG.EXAM_TIME_LIMIT * 60; // 80分鐘
 
 // ===== 初始化 =====
 async function init() {
     if (!CAT_ID) { location.href = "index.html"; return; }
 
     try {
-        // 從 GAS 取 80 題（已隨機抽好，帶答案）
-        const res = await fetch(
-            `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}`
-        );
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
+        if (MODE === "review") {
+            // 錯題複習模式：從 sessionStorage 讀取錯題
+            const stored = sessionStorage.getItem("reviewQuestions");
+            if (!stored) throw new Error("找不到錯題資料");
+            questions = JSON.parse(stored);
+            catName = CAT_ID + "（錯題複習）";
+        } else {
+            // 一般模式：從 GAS 取 80 題
+            const res = await fetchWithTimeout(
+                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}`
+            );
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            questions = data;
+            catName = CAT_ID;
+        }
 
-        if (data.error) throw new Error(data.error);
+        // 隨機排列每題選項
+        questions.forEach(q => shuffleOptions(q));
 
-        questions = data;
-        // 從 categories 取名稱（先用 catId，之後有值再抓）
-        catName = CAT_ID;
-        // 嘗試從返回資料的第一題推職類名（GAS 可擴充，這裡用 catId 即可）
-
-        document.title = `${CAT_ID} — 作答中`;
-        document.getElementById("exam-title").textContent = CAT_ID;
+        document.title = `${catName} — 作答中`;
+        document.getElementById("exam-title").textContent = catName;
 
         answers = questions.map(() => ({ chosen: null, hinted: false }));
 
@@ -46,11 +48,35 @@ async function init() {
 
         renderQuestion();
         updateHeader();
+        startTimer();
         document.addEventListener("keydown", handleKey);
     } catch (e) {
         document.getElementById("loading").innerHTML =
-            `<p style="color:red;padding:40px 0">載入題庫失敗：${e.message}<br>請確認 GAS_URL 已設定。</p>`;
+            `<p style="color:red;padding:40px 0">載入題庫失敗：${e.message}<br>請確認網路連線正常或稍後再試。</p>
+       <a href="index.html" class="btn btn-outline" style="margin-top:12px">← 返回首頁</a>`;
     }
+}
+
+// ===== 計時器 =====
+function startTimer() {
+    const timerEl = document.getElementById("timer");
+    if (!timerEl) return;
+    timerEl.textContent = formatTime(timerSeconds);
+    timerEl.style.display = "inline-flex";
+
+    timerInterval = setInterval(() => {
+        timerSeconds--;
+        if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerEl.textContent = "00:00";
+            showToast("⏰ 時間到！自動交卷", 3000);
+            setTimeout(() => finishExam(), 1500);
+            return;
+        }
+        timerEl.textContent = formatTime(timerSeconds);
+        // 最後 5 分鐘變紅
+        if (timerSeconds <= 300) timerEl.classList.add("timer-warn");
+    }, 1000);
 }
 
 // ===== 渲染題目 =====
@@ -59,10 +85,14 @@ function renderQuestion() {
     const ans = answers[current];
     const isAnswered = ans.chosen !== null || ans.hinted;
 
+    const noScoreBadge = ans.hinted
+        ? `<div class="no-score-badge">💡 此題不列入計分</div>` : "";
+
     const area = document.getElementById("main-area");
     area.innerHTML = `
     <div class="question-wrap">
       <div class="question-card">
+        ${noScoreBadge}
         <div class="q-number">第 ${current + 1} 題 / 共 ${questions.length} 題</div>
         <div class="q-text">${q.q}</div>
         <div class="options-list" id="options">
@@ -95,7 +125,7 @@ function renderQuestion() {
         <button class="btn btn-outline" onclick="prevQ()" ${current === 0 ? "disabled" : ""}>← 上一題</button>
         ${isAnswered
             ? `<button class="btn btn-primary" onclick="nextQ()">
-              ${current === questions.length - 1 ? "查看成績 →" : "下一題 →"}
+               ${current === questions.length - 1 ? "查看成績 →" : "下一題 →"}
              </button>`
             : `<button class="btn btn-hint" onclick="showHint()">💡 查看答案</button>`}
         <button class="btn btn-feedback" onclick="openFeedback()">💬 反饋</button>
@@ -128,7 +158,6 @@ function nextQ() {
 }
 
 function handleKey(e) {
-    // Esc 關閉所有 Modal
     if (e.key === "Escape") {
         if (document.getElementById("feedback-modal")?.classList.contains("open")) { closeFeedback(); return; }
         if (document.getElementById("end-confirm-modal")?.classList.contains("open")) { closeEndConfirm(); return; }
@@ -150,7 +179,7 @@ function updateHeader() {
         ((current + 1) / questions.length * 100) + "%";
 }
 
-// 提前結束（用自訂 Modal，不用 confirm 以免被瀏覽器跳過）
+// ===== 提前結束 =====
 function endEarly() {
     if (!questions.length) return;
     document.getElementById("end-confirm-modal").classList.add("open");
@@ -164,8 +193,32 @@ function confirmEnd() {
 }
 
 function finishExam() {
-    const resultData = { catId: CAT_ID, catName, questions, answers };
+    if (timerInterval) clearInterval(timerInterval);
+    const elapsed = (CONFIG.EXAM_TIME_LIMIT * 60) - timerSeconds;
+
+    const resultData = { catId: CAT_ID, catName, questions, answers, elapsed };
     sessionStorage.setItem("examResult", JSON.stringify(resultData));
+
+    // 回報統計到 GAS（fire-and-forget）
+    try {
+        const realCorrect = answers.filter((a, i) => !a.hinted && a.chosen === questions[i].answer).length;
+        const score = Math.round(realCorrect * CONFIG.SCORE_PER_Q * 100) / 100;
+        fetch(CONFIG.GAS_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "logResult",
+                catId: CAT_ID,
+                score,
+                correct: realCorrect,
+                total: questions.length,
+                elapsed,
+                timestamp: new Date().toISOString(),
+            }),
+        }).catch(() => { }); // 忽略錯誤
+    } catch { }
+
     location.href = "result.html";
 }
 
@@ -190,22 +243,20 @@ async function submitFeedback() {
     const desc = document.getElementById("fb-desc").value.trim();
     const q = questions[feedbackQIndex];
 
-    const payload = {
-        action: "feedback",
-        timestamp: new Date().toISOString(),
-        catName,
-        questionId: q.id,
-        question: q.q,
-        feedbackType: type,
-        description: desc,
-    };
-
     try {
-        await fetch(CONFIG.GAS_URL, {
+        await fetchWithTimeout(CONFIG.GAS_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                action: "feedback",
+                timestamp: new Date().toISOString(),
+                catName,
+                questionId: q.id,
+                question: q.q,
+                feedbackType: type,
+                description: desc,
+            }),
         });
         showToast("✅ 反饋已送出，感謝你！");
     } catch {

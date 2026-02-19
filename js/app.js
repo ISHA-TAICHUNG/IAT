@@ -28,7 +28,7 @@ function getForeignLabel(catName) {
 
 // ===== API =====
 async function loadCategories() {
-  const res = await fetch(`${CONFIG.GAS_URL}?action=categories`);
+  const res = await fetchWithTimeout(`${CONFIG.GAS_URL}?action=categories`);
   if (!res.ok) throw new Error("HTTP " + res.status);
   return res.json();
 }
@@ -74,6 +74,9 @@ function renderDropdown(cats) {
   `;
 
   document.getElementById("btn-start").disabled = true;
+
+  // 顯示首頁歷史成績
+  renderHomeHistory();
 }
 
 function onCatChange(id) {
@@ -92,6 +95,28 @@ function onCatChange(id) {
     題庫共 <strong>${total}</strong> 題，隨機抽選 <strong>80</strong> 題作答
   `;
   btn.disabled = false;
+}
+
+// ===== 首頁歷史成績 =====
+function renderHomeHistory() {
+  const section = document.getElementById("history-section");
+  if (!section) return;
+  const history = getExamHistory();
+  if (history.length === 0) { section.innerHTML = ""; return; }
+
+  section.innerHTML = `
+    <div class="history-card home-history">
+      <h2>📊 最近練習紀錄</h2>
+      <div class="history-list">
+        ${history.slice(0, 5).map(h => `
+          <div class="history-item">
+            <div class="hi-cat">${h.catName}</div>
+            <div class="hi-score ${h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail'}">${h.score} 分</div>
+            <div class="hi-detail">答對 ${h.correct}/${h.total}</div>
+            <div class="hi-date">${new Date(h.date).toLocaleDateString("zh-TW")}</div>
+          </div>`).join("")}
+      </div>
+    </div>`;
 }
 
 // ===== 測驗前須知 =====
@@ -117,11 +142,9 @@ function closePreExam() {
 // ===== 進站須知 =====
 function closeNotice() {
   document.getElementById("notice-modal").classList.remove("open");
-  // 記憶已看過（sessionStorage 每次開瀏覽器都要看一次）
   sessionStorage.setItem("notice_seen", "1");
 }
 
-// 若本次已看過則略過
 if (sessionStorage.getItem("notice_seen")) {
   document.addEventListener("DOMContentLoaded", () => {
     const m = document.getElementById("notice-modal");
@@ -134,5 +157,6 @@ loadCategories()
   .then(renderDropdown)
   .catch((err) => {
     document.getElementById("select-wrap").innerHTML = `
-      <p class="error-msg">載入題庫失敗：${err.message}<br>請確認 GAS_URL 已設定。</p>`;
+      <p class="error-msg">載入題庫失敗：${err.message}<br>請確認網路連線正常或稍後再試。</p>`;
   });
+

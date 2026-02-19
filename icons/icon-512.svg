@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#e85d04"/>
+  <text x="96" y="300" text-anchor="middle" font-size="200" font-family="Arial" font-weight="bold" fill="white">安</text>
+  <text x="96" y="420" text-anchor="middle" font-size="80" font-family="Arial" font-weight="bold" fill="rgba(255,255,255,0.8)">測驗</text>
+</svg>

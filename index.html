@@ -9,7 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20250219b" />
+  <link rel="stylesheet" href="css/style.css?v=20250220" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+  <link rel="apple-touch-icon" href="icons/icon-192.svg" />
 </head>
 
 <body>
@@ -135,12 +138,22 @@
         </div>
       </div>
     </div>
+
+    <!-- 歷史成績 -->
+    <div id="history-section"></div>
   </main>
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/config.js?v=20250219b"></script>
-  <script src="js/app.js?v=20250219b"></script>
+  <script src="js/config.js?v=20250220"></script>
+  <script src="js/utils.js?v=20250220"></script>
+  <script src="js/app.js?v=20250220"></script>
+  <script>
+    // PWA Service Worker 註冊
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => { });
+    }
+  </script>
 </body>
 
 </html>

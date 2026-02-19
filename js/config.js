@@ -13,4 +13,7 @@ const CONFIG = {
 
     // 及格分數
     PASS_SCORE: 60,
+
+    // 答題時間限制（分鐘）
+    EXAM_TIME_LIMIT: 80,
 };
