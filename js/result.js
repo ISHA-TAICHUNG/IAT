@@ -10,22 +10,22 @@ let correct = 0, wrong = 0, hinted = 0, skipped = 0;
 const wrongList = [];
 
 questions.forEach((q, i) => {
-    const ans = answers[i];
-    if (ans.hinted && ans.chosen === null) {
-        // 只查看答案，未作答 → 不計分
-        hinted++;
-        wrongList.push({ q, ans, idx: i + 1, status: "hinted" });
-    } else if (ans.chosen === null) {
-        skipped++;
-        wrongList.push({ q, ans, idx: i + 1, status: "skipped" });
-    } else if (ans.chosen === q.answer) {
-        correct++;
-        // 查看答案後選對 → 也不計分（已提示）
-        if (ans.hinted) hinted++;
-    } else {
-        wrong++;
-        wrongList.push({ q, ans, idx: i + 1, status: "wrong" });
-    }
+  const ans = answers[i];
+  if (ans.hinted && ans.chosen === null) {
+    // 只查看答案，未作答 → 不計分
+    hinted++;
+    wrongList.push({ q, ans, idx: i + 1, status: "hinted" });
+  } else if (ans.chosen === null) {
+    skipped++;
+    wrongList.push({ q, ans, idx: i + 1, status: "skipped" });
+  } else if (ans.chosen === q.answer) {
+    correct++;
+    // 查看答案後選對 → 也不計分（已提示）
+    if (ans.hinted) hinted++;
+  } else {
+    wrong++;
+    wrongList.push({ q, ans, idx: i + 1, status: "wrong" });
+  }
 });
 
 // 僅統計未提示的答對題
@@ -75,10 +75,60 @@ document.getElementById("result-area").innerHTML = `
         <div class="wi-q">${item.q.q}</div>
         <div class="wi-meta">
           ${item.ans.chosen !== null && item.ans.chosen !== item.q.answer
-        ? `<span class="wi-your">你的答案：${LABELS[item.ans.chosen]}. ${item.q.options[item.ans.chosen]}</span>`
-        : ""}
-          <span class="wi-correct">正確答案：${LABELS[item.q.answer]}. ${item.q.options[item.q.answer]}</span>
+    ? `<span class="wi-your">你的答案：${item.q.options[item.ans.chosen]}</span>`
+    : ""}
+          <span class="wi-correct">正確答案：${item.q.options[item.q.answer]}</span>
         </div>
+        <button class="btn btn-feedback" onclick="openResultFeedback(${item.idx - 1})">💬 反饋</button>
       </div>`).join("")}
   </div>` : `<p style="text-align:center;color:var(--success);font-weight:700;font-size:1.1rem;margin:24px;">🌟 全部答對！</p>`}
 `;
+
+// ===== 反饋功能 =====
+let resultFbQIndex = null;
+
+function showToast(msg, dur = 2200) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), dur);
+}
+
+function openResultFeedback(qIdx) {
+  resultFbQIndex = qIdx;
+  document.getElementById("result-fb-modal").classList.add("open");
+}
+function closeResultFeedback() {
+  document.getElementById("result-fb-modal").classList.remove("open");
+}
+
+async function submitResultFeedback() {
+  const type = document.getElementById("result-fb-type").value;
+  const desc = document.getElementById("result-fb-desc").value.trim();
+  const q = questions[resultFbQIndex];
+
+  const payload = {
+    action: "feedback",
+    timestamp: new Date().toISOString(),
+    catName,
+    questionId: q.id,
+    question: q.q,
+    feedbackType: type,
+    description: desc,
+  };
+
+  try {
+    await fetch(CONFIG.GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    showToast("✅ 反饋已送出，感謝你！");
+  } catch {
+    showToast("⚠️ 反饋送出失敗，請稍後再試。");
+  }
+
+  closeResultFeedback();
+  document.getElementById("result-fb-desc").value = "";
+}

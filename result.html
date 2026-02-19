@@ -14,8 +14,17 @@
 <body>
     <header class="site-header">
         <div class="inner">
-            <span class="header-logo">📋</span>
-            <h1>測驗成績</h1>
+            <div class="header-logo-wrap">
+                <svg class="header-logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                    <rect x="9" y="3" width="6" height="4" rx="1" />
+                    <path d="M9 12h6M9 16h4" />
+                </svg>
+            </div>
+            <div>
+                <h1>測驗成績</h1>
+                <p class="header-sub">職業安全衛生 — 即測即評</p>
+            </div>
         </div>
     </header>
 
@@ -27,6 +36,28 @@
             </div>
         </div>
     </main>
+
+    <!-- 反饋 Modal -->
+    <div class="modal-backdrop" id="result-fb-modal">
+        <div class="modal">
+            <h3>💬 題目反饋</h3>
+            <label>反饋類型</label>
+            <select id="result-fb-type">
+                <option value="題目有誤">題目有誤</option>
+                <option value="答案有誤">答案有誤</option>
+                <option value="選項有誤">選項有誤</option>
+                <option value="其他">其他</option>
+            </select>
+            <label>補充說明（選填）</label>
+            <textarea id="result-fb-desc" placeholder="請描述問題…"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeResultFeedback()">取消</button>
+                <button class="btn btn-primary" onclick="submitResultFeedback()">送出</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
 
     <script src="js/config.js"></script>
     <script src="js/result.js"></script>
