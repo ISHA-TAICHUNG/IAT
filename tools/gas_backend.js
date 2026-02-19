@@ -647,9 +647,9 @@ function logExamResult(body) {
 
     if (!sheet) {
         sheet = ss.insertSheet(STATS_SHEET);
-        sheet.appendRow(["時間", "職類", "分數", "答對", "總題數", "用時(秒)"]);
+        sheet.appendRow(["時間", "職類", "分數", "答對", "總題數", "用時(秒)", "模式"]);
         sheet.setFrozenRows(1);
-        const headerRange = sheet.getRange(1, 1, 1, 6);
+        const headerRange = sheet.getRange(1, 1, 1, 7);
         headerRange.setBackground("#057a55");
         headerRange.setFontColor("#ffffff");
         headerRange.setFontWeight("bold");
@@ -662,6 +662,7 @@ function logExamResult(body) {
         body.correct || 0,
         body.total || 0,
         body.elapsed || 0,
+        body.mode || "normal",
     ]);
 }
 
