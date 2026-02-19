@@ -128,6 +128,11 @@ function nextQ() {
 }
 
 function handleKey(e) {
+    // Esc 關閉所有 Modal
+    if (e.key === "Escape") {
+        if (document.getElementById("feedback-modal")?.classList.contains("open")) { closeFeedback(); return; }
+        if (document.getElementById("end-confirm-modal")?.classList.contains("open")) { closeEndConfirm(); return; }
+    }
     if (document.getElementById("feedback-modal")?.classList.contains("open")) return;
     if (document.getElementById("end-confirm-modal")?.classList.contains("open")) return;
     if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
@@ -176,6 +181,11 @@ function closeFeedback() {
 }
 
 async function submitFeedback() {
+    const btn = document.querySelector('#feedback-modal .btn-primary');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "送出中…";
+
     const type = document.getElementById("fb-type").value;
     const desc = document.getElementById("fb-desc").value.trim();
     const q = questions[feedbackQIndex];
@@ -202,6 +212,8 @@ async function submitFeedback() {
         showToast("⚠️ 反饋送出失敗，請稍後再試。");
     }
 
+    btn.disabled = false;
+    btn.textContent = "送出";
     closeFeedback();
     document.getElementById("fb-desc").value = "";
 }

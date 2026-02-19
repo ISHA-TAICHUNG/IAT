@@ -11,8 +11,8 @@ const wrongList = [];
 
 questions.forEach((q, i) => {
   const ans = answers[i];
-  if (ans.hinted && ans.chosen === null) {
-    // 只查看答案，未作答 → 不計分
+  if (ans.hinted) {
+    // 曾查看答案 → 不計分（不管後來有沒有選對）
     hinted++;
     wrongList.push({ q, ans, idx: i + 1, status: "hinted" });
   } else if (ans.chosen === null) {
@@ -20,8 +20,6 @@ questions.forEach((q, i) => {
     wrongList.push({ q, ans, idx: i + 1, status: "skipped" });
   } else if (ans.chosen === q.answer) {
     correct++;
-    // 查看答案後選對 → 也不計分（已提示）
-    if (ans.hinted) hinted++;
   } else {
     wrong++;
     wrongList.push({ q, ans, idx: i + 1, status: "wrong" });
@@ -99,6 +97,11 @@ function closeResultFeedback() {
 }
 
 async function submitResultFeedback() {
+  const btn = document.querySelector('#result-fb-modal .btn-primary');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = "送出中…";
+
   const type = document.getElementById("result-fb-type").value;
   const desc = document.getElementById("result-fb-desc").value.trim();
   const q = questions[resultFbQIndex];
@@ -125,6 +128,15 @@ async function submitResultFeedback() {
     showToast("⚠️ 反饋送出失敗，請稍後再試。");
   }
 
+  btn.disabled = false;
+  btn.textContent = "送出";
   closeResultFeedback();
   document.getElementById("result-fb-desc").value = "";
 }
+
+// Esc 關閉 Modal
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && document.getElementById("result-fb-modal")?.classList.contains("open")) {
+    closeResultFeedback();
+  }
+});

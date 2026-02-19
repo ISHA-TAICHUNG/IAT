@@ -205,7 +205,7 @@ function applyCorrections() {
                         case "選項D":
                             q.options[3] = correction.newValue;
                             break;
-                        case "答案(ABCD)":
+                        case "答案(ABCD)": {
                             const answerMap = { "A": 0, "B": 1, "C": 2, "D": 3 };
                             const ansIdx = answerMap[correction.newValue.toUpperCase()];
                             if (ansIdx === undefined) {
@@ -215,6 +215,7 @@ function applyCorrections() {
                             }
                             q.answer = ansIdx;
                             break;
+                        }
                         case "刪除此題":
                             questions.splice(qIndex, 1);
                             break;
@@ -274,9 +275,15 @@ function updateCategoryTotal(catId, newTotal) {
 
 // ================== 清除快取 ==================
 function clearAllCache() {
-    CACHE.removeAll(["categories"]);
-    // 清除所有 cat_ 開頭的快取（CacheService 無法 wildcard，但重新部署即可）
-    SpreadsheetApp.getUi().alert("✅ 快取已清除！\n\n如果部分職類仍有快取，請到「部署 → 管理部署 → 建立新版本」完全刷新。");
+    var keys = ["categories"];
+    try {
+        var cats = JSON.parse(getFileByName("categories.json").getBlob().getDataAsString("UTF-8"));
+        cats.forEach(function (c) { keys.push("cat_" + c.id); });
+    } catch (e) {
+        // 無法讀取 categories.json 時僅清 categories key
+    }
+    CACHE.removeAll(keys);
+    SpreadsheetApp.getUi().alert("✅ 快取已清除！\n\n共清除 " + keys.length + " 筆快取。\n新題庫將在下次請求時重新載入。");
 }
 
 // ────────────────────────────── GET ──────────────────────────────
@@ -391,9 +398,8 @@ function getFileByName(name) {
     return files.next();
 }
 
-function jsonResponse(data, code) {
-    const output = ContentService
+function jsonResponse(data) {
+    return ContentService
         .createTextOutput(JSON.stringify(data))
         .setMimeType(ContentService.MimeType.JSON);
-    return output;
 }
