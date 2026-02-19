@@ -1,6 +1,7 @@
-// 首頁 — 載入職類清單並渲染
+// 首頁 — 從 GAS 取職類清單並渲染
 async function loadCategories() {
-    const res = await fetch("data/categories.json");
+    const res = await fetch(`${CONFIG.GAS_URL}?action=categories`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
     return res.json();
 }
 
@@ -47,7 +48,10 @@ function startExam(catId) {
 // 初始化
 loadCategories()
     .then(renderCategories)
-    .catch(() => {
-        document.getElementById("cat-container").innerHTML =
-            '<p style="color:red;padding:40px">載入職類失敗，請確認 data/categories.json 存在。</p>';
+    .catch((err) => {
+        document.getElementById("cat-container").innerHTML = `
+      <p style="color:red;padding:40px 0">
+        載入職類失敗（${err.message}）<br>
+        請確認 config.js 的 GAS_URL 已正確設定。
+      </p>`;
     });

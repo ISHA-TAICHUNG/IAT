@@ -2,20 +2,12 @@
 const params = new URLSearchParams(location.search);
 const CAT_ID = params.get("cat");
 
-let questions = [];    // 本次抽到的 80 題
+let questions = [];    // 本次抽到的 80 題（由 GAS 隨機抽好）
 let catName = "";
-let current = 0;       // 目前題號 (0-based)
+let current = 0;
 let answers = [];      // answers[i] = { chosen: number|null, hinted: bool }
 
 // ===== 工具 =====
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
 function showToast(msg, dur = 2200) {
     const t = document.getElementById("toast");
     t.textContent = msg;
@@ -30,17 +22,23 @@ async function init() {
     if (!CAT_ID) { location.href = "index.html"; return; }
 
     try {
-        const res = await fetch(`data/${encodeURIComponent(CAT_ID)}.json`);
+        // 從 GAS 取 80 題（已隨機抽好，帶答案）
+        const res = await fetch(
+            `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}`
+        );
+        if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        catName = data.name;
-        document.title = `${catName} — 作答中`;
-        document.getElementById("exam-title").textContent = catName;
 
-        // 隨機抽 80 題
-        const pool = shuffle([...data.questions]);
-        questions = pool.slice(0, Math.min(CONFIG.EXAM_QUESTIONS, pool.length));
+        if (data.error) throw new Error(data.error);
 
-        // 初始化答案
+        questions = data;
+        // 從 categories 取名稱（先用 catId，之後有值再抓）
+        catName = CAT_ID;
+        // 嘗試從返回資料的第一題推職類名（GAS 可擴充，這裡用 catId 即可）
+
+        document.title = `${CAT_ID} — 作答中`;
+        document.getElementById("exam-title").textContent = CAT_ID;
+
         answers = questions.map(() => ({ chosen: null, hinted: false }));
 
         document.getElementById("q-total").textContent = questions.length;
@@ -49,19 +47,14 @@ async function init() {
         renderQuestion();
         updateHeader();
 
-        // 提前結束按鈕
         document.getElementById("btn-end").addEventListener("click", () => {
             if (confirm("確定要提前結束作答並查看成績？")) finishExam();
         });
 
-        // 鍵盤快捷鍵
         document.addEventListener("keydown", handleKey);
-
-        // 儲存到 sessionStorage 以防重整
-        sessionStorage.setItem("examCatId", CAT_ID);
     } catch (e) {
         document.getElementById("loading").innerHTML =
-            `<p style="color:red">載入 ${CAT_ID} 題庫失敗：${e.message}</p>`;
+            `<p style="color:red;padding:40px 0">載入題庫失敗：${e.message}<br>請確認 GAS_URL 已設定。</p>`;
     }
 }
 
@@ -78,28 +71,18 @@ function renderQuestion() {
         <div class="q-number">第 ${current + 1} 題 / 共 ${questions.length} 題</div>
         <div class="q-text">${q.q}</div>
         <div class="options-list" id="options">
-          ${q.options
-            .map((opt, i) => {
-                let cls = "";
-                if (isAnswered) {
-                    if (i === q.answer) {
-                        cls = ans.hinted && ans.chosen === null ? "hint" : "correct";
-                    } else if (i === ans.chosen && ans.chosen !== q.answer) {
-                        cls = "wrong";
-                    }
-                } else if (i === ans.chosen) {
-                    cls = "selected";
-                }
-                return `
-                <button class="option-btn ${cls}"
-                  id="opt-${i}"
-                  onclick="selectOption(${i})"
-                  ${isAnswered ? "disabled" : ""}>
-                  <span class="option-label">${LABELS[i]}</span>
-                  <span>${opt}</span>
-                </button>`;
-            })
-            .join("")}
+          ${q.options.map((opt, i) => {
+        let cls = "";
+        if (isAnswered) {
+            if (i === q.answer) cls = ans.hinted && ans.chosen === null ? "hint" : "correct";
+            else if (i === ans.chosen && ans.chosen !== q.answer) cls = "wrong";
+        } else if (i === ans.chosen) cls = "selected";
+        return `
+              <button class="option-btn ${cls}" onclick="selectOption(${i})" ${isAnswered ? "disabled" : ""}>
+                <span class="option-label">${LABELS[i]}</span>
+                <span>${opt}</span>
+              </button>`;
+    }).join("")}
         </div>
         <div class="answer-hint ${isAnswered ? "show " + (ans.hinted && ans.chosen === null ? "hint-only" : ans.chosen === q.answer ? "correct" : "wrong") : ""}"
           id="answer-hint">
@@ -116,7 +99,7 @@ function renderQuestion() {
       <div class="action-row">
         <button class="btn btn-outline" onclick="prevQ()" ${current === 0 ? "disabled" : ""}>← 上一題</button>
         ${isAnswered
-            ? `<button class="btn btn-primary" onclick="nextQ()" ${current === questions.length - 1 ? "" : ""}>
+            ? `<button class="btn btn-primary" onclick="nextQ()">
               ${current === questions.length - 1 ? "查看成績 →" : "下一題 →"}
              </button>`
             : `<button class="btn btn-hint" onclick="showHint()">💡 查看答案</button>`}
@@ -128,13 +111,12 @@ function renderQuestion() {
 // ===== 選擇選項 =====
 function selectOption(idx) {
     const ans = answers[current];
-    if (ans.chosen !== null || ans.hinted) return; // 已回答
+    if (ans.chosen !== null || ans.hinted) return;
     ans.chosen = idx;
     renderQuestion();
     updateHeader();
 }
 
-// ===== 查看答案 =====
 function showHint() {
     const ans = answers[current];
     if (ans.chosen !== null) return;
@@ -143,55 +125,32 @@ function showHint() {
     updateHeader();
 }
 
-// ===== 導航 =====
-function prevQ() {
-    if (current > 0) { current--; renderQuestion(); updateHeader(); }
-}
+function prevQ() { if (current > 0) { current--; renderQuestion(); updateHeader(); } }
 
 function nextQ() {
-    if (current < questions.length - 1) {
-        current++;
-        renderQuestion();
-        updateHeader();
-    } else {
-        // 最後一題
-        finishExam();
-    }
+    if (current < questions.length - 1) { current++; renderQuestion(); updateHeader(); }
+    else finishExam();
 }
 
 function handleKey(e) {
     if (document.getElementById("feedback-modal")?.classList.contains("open")) return;
-    const key = e.key;
-    if (["1", "2", "3", "4"].includes(key)) selectOption(Number(key) - 1);
-    if (key === "ArrowRight" || key === "Enter") {
+    if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
+    if (e.key === "ArrowRight" || e.key === "Enter") {
         if (answers[current].chosen !== null || answers[current].hinted) nextQ();
     }
-    if (key === "ArrowLeft") prevQ();
+    if (e.key === "ArrowLeft") prevQ();
 }
 
-// ===== 更新 header =====
 function updateHeader() {
     document.getElementById("q-current").textContent = current + 1;
-    const answered = answers.filter((a) => a.chosen !== null || a.hinted).length;
+    const answered = answers.filter(a => a.chosen !== null || a.hinted).length;
     document.getElementById("answered-count").textContent = answered;
-    const pct = ((current + 1) / questions.length) * 100;
-    document.getElementById("progress-bar").style.width = pct + "%";
+    document.getElementById("progress-bar").style.width =
+        ((current + 1) / questions.length * 100) + "%";
 }
 
-// ===== 完成測驗 =====
 function finishExam() {
-    // 將結果存 sessionStorage，跳轉結果頁
-    const resultData = {
-        catId: CAT_ID,
-        catName,
-        questions: questions.map((q) => ({
-            id: q.id,
-            q: q.q,
-            options: q.options,
-            answer: q.answer,
-        })),
-        answers,
-    };
+    const resultData = { catId: CAT_ID, catName, questions, answers };
     sessionStorage.setItem("examResult", JSON.stringify(resultData));
     location.href = "result.html";
 }
@@ -203,7 +162,6 @@ function openFeedback() {
     feedbackQIndex = current;
     document.getElementById("feedback-modal").classList.add("open");
 }
-
 function closeFeedback() {
     document.getElementById("feedback-modal").classList.remove("open");
 }
