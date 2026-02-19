@@ -1,6 +1,6 @@
 // ===== 成績頁 =====
 const raw = sessionStorage.getItem("examResult");
-if (!raw) { location.href = "index.html"; }
+if (!raw) { location.replace("index.html"); throw new Error("no data"); }
 
 const data = JSON.parse(raw);
 const { catName, questions, answers } = data;
@@ -28,14 +28,10 @@ questions.forEach((q, i) => {
   }
 });
 
-// 僅統計未提示的答對題
-const scoredCorrect = correct - (answers.filter(a => a.hinted && a.chosen === a.answer).length);
 // 實際計分：未提示且答對
 const realCorrect = answers.filter((a, i) => !a.hinted && a.chosen === questions[i].answer).length;
 const score = Math.round(realCorrect * CONFIG.SCORE_PER_Q * 100) / 100;
 const pass = score >= CONFIG.PASS_SCORE;
-
-const LABELS = ["A", "B", "C", "D"];
 
 // ===== 渲染 =====
 document.getElementById("result-area").innerHTML = `

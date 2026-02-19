@@ -129,6 +129,7 @@ function nextQ() {
 
 function handleKey(e) {
     if (document.getElementById("feedback-modal")?.classList.contains("open")) return;
+    if (document.getElementById("end-confirm-modal")?.classList.contains("open")) return;
     if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
     if (e.key === "ArrowRight" || e.key === "Enter") {
         if (answers[current].chosen !== null || answers[current].hinted) nextQ();
