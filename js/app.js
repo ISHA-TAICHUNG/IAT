@@ -1,4 +1,4 @@
-// ===== 外籍移工國籍翻譯對照 =====
+// ===== 即測即評國籍翻譯對照 =====
 const LANG_LABELS = {
   印尼: { native: "Bahasa Indonesia", flag: "🇮🇩" },
   菲律賓: { native: "Filipino", flag: "🇵🇭" },
@@ -18,7 +18,7 @@ function getJobEmoji(catName) {
   return match ? match.emoji + " " : "";
 }
 
-// 從職類名稱判斷是否外籍移工並取得翻譯
+// 從職類名稱判斷是否即測即評外籍並取得翻譯
 function getForeignLabel(catName) {
   for (const [zh, info] of Object.entries(LANG_LABELS)) {
     if (catName.includes(zh)) return info;
@@ -36,7 +36,7 @@ async function loadCategories() {
 // ===== 下拉選單渲染 =====
 function renderDropdown(cats) {
   const wrap = document.getElementById("select-wrap");
-  const groupOrder = ["業務主管", "作業主管", "醫護", "外籍移工"];
+  const groupOrder = ["業務主管", "作業主管", "職護", "即測即評"];
   const groups = cats.reduce((acc, c) => {
     (acc[c.group] = acc[c.group] || []).push(c);
     return acc;
