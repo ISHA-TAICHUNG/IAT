@@ -27,7 +27,7 @@ async function init() {
         timerSeconds = saved.timerSeconds;
         catName = saved.catName;
 
-        document.title = `${escapeHtml(catName)} — 作答中`;
+        document.title = `${catName} — 作答中`;
         document.getElementById("exam-title").textContent = catName;
         document.getElementById("q-total").textContent = questions.length;
         document.getElementById("loading").remove();
@@ -66,7 +66,7 @@ async function init() {
         // 隨機排列每題選項
         questions.forEach(q => shuffleOptions(q));
 
-        document.title = `${escapeHtml(catName)} — 作答中`;
+        document.title = `${catName} — 作答中`;
         document.getElementById("exam-title").textContent = catName;
 
         answers = questions.map(() => ({ chosen: null, hinted: false }));
@@ -89,10 +89,11 @@ async function init() {
 
 // ===== 計時器 =====
 function startTimer() {
-    const timerEl = document.getElementById("timer");
-    if (!timerEl) return;
+    const timerWrap = document.getElementById("timer");
+    const timerEl = document.getElementById("timer-text");
+    if (!timerWrap || !timerEl) return;
     timerEl.textContent = formatTime(timerSeconds);
-    timerEl.style.display = "inline-flex";
+    timerWrap.style.display = "inline-flex";
 
     timerInterval = setInterval(() => {
         timerSeconds--;
@@ -105,7 +106,7 @@ function startTimer() {
         }
         timerEl.textContent = formatTime(timerSeconds);
         // 最後 5 分鐘變紅
-        if (timerSeconds <= 300) timerEl.classList.add("timer-warn");
+        if (timerSeconds <= 300) timerWrap.classList.add("timer-warn");
     }, 1000);
 }
 

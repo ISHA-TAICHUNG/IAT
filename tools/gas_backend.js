@@ -412,41 +412,47 @@ function addNewQuestions() {
         return;
     }
 
-    // 驗證
-    for (const p of pending) {
+    // 驗證並篩選有效的 item
+    let failCount = 0;
+    const valid = pending.filter(p => {
         if (!p.q || p.q.length < 3) {
             sheet.getRange(p.row, 8).setValue("❌ 題目太短");
             failCount++;
-            continue;
+            return false;
         }
         if (p.options.some(o => !o || o.length === 0)) {
             sheet.getRange(p.row, 8).setValue("❌ 選項不可為空");
             failCount++;
-            continue;
+            return false;
         }
         if (answerMap[p.answer] === undefined) {
             sheet.getRange(p.row, 8).setValue("❌ 答案請填 A/B/C/D");
             failCount++;
-            continue;
+            return false;
         }
+        return true;
+    });
+
+    if (valid.length === 0) {
+        ui.alert(`全部 ${failCount} 筆驗證失敗，請檢查資料！`);
+        return;
     }
 
     const confirm = ui.alert(
         "確認新增",
-        `即將新增 ${pending.length} 題到題庫，確定嗎？`,
+        `即將新增 ${valid.length} 題到題庫${failCount > 0 ? `（另有 ${failCount} 筆驗證失敗）` : ''}，確定嗎？`,
         ui.ButtonSet.YES_NO
     );
     if (confirm !== ui.Button.YES) return;
 
     // 依職類分組
     const grouped = {};
-    pending.forEach(p => {
+    valid.forEach(p => {
         if (!grouped[p.catId]) grouped[p.catId] = [];
         grouped[p.catId].push(p);
     });
 
     let successCount = 0;
-    let failCount = 0;
 
     for (const catId of Object.keys(grouped)) {
         try {
