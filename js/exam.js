@@ -113,12 +113,29 @@ function startTimer() {
 function renderNav() {
     let navEl = document.getElementById("q-nav");
     if (!navEl) {
+        // 建立外層 wrapper
+        const wrap = document.createElement("div");
+        wrap.id = "q-nav-wrap";
+        wrap.className = "q-nav-wrap";
+
         navEl = document.createElement("div");
         navEl.id = "q-nav";
         navEl.className = "q-nav";
-        // 插到 exam-header 後面
+        wrap.appendChild(navEl);
+
+        // toggle 按鈕（手機才顯示）
+        const toggle = document.createElement("button");
+        toggle.className = "q-nav-toggle";
+        toggle.id = "q-nav-toggle";
+        toggle.textContent = "▼ 展開題目導覽";
+        toggle.onclick = () => {
+            const expanded = navEl.classList.toggle("expanded");
+            toggle.textContent = expanded ? "▲ 收合題目導覽" : "▼ 展開題目導覽";
+        };
+        wrap.appendChild(toggle);
+
         const header = document.querySelector(".exam-header");
-        if (header) header.after(navEl);
+        if (header) header.after(wrap);
     }
 
     navEl.innerHTML = questions.map((q, i) => {
