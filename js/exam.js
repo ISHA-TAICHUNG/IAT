@@ -316,7 +316,8 @@ function finishExam() {
     // 回報統計到 GAS（fire-and-forget）
     try {
         const realCorrect = answers.filter((a, i) => !a.hinted && a.chosen === questions[i].answer).length;
-        const score = Math.round(realCorrect * CONFIG.SCORE_PER_Q * 100) / 100;
+        const scorePerQ = CONFIG.FULL_SCORE / questions.length;
+        const score = Math.round(realCorrect * scorePerQ * 100) / 100;
         fetch(CONFIG.GAS_URL, {
             method: "POST",
             mode: "no-cors",

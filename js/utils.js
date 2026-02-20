@@ -174,10 +174,11 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
                 description: desc,
             }),
         });
+        // no-cors 模式無法讀取 response，fetch 沒拋錯就當成功
         showToast("✅ 反饋已送出，感謝你！");
     } catch (e) {
         console.warn("反饋送出失敗：", e);
-        showToast("⚠️ 反饋送出失敗，請稍後再試。");
+        showToast("⚠️ 反饋送出失敗，請檢查網路連線。");
     }
 
     btn.disabled = false;

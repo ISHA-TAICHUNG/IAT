@@ -416,14 +416,17 @@ function addNewQuestions() {
     for (const p of pending) {
         if (!p.q || p.q.length < 3) {
             sheet.getRange(p.row, 8).setValue("❌ 題目太短");
+            failCount++;
             continue;
         }
         if (p.options.some(o => !o || o.length === 0)) {
             sheet.getRange(p.row, 8).setValue("❌ 選項不可為空");
+            failCount++;
             continue;
         }
         if (answerMap[p.answer] === undefined) {
             sheet.getRange(p.row, 8).setValue("❌ 答案請填 A/B/C/D");
+            failCount++;
             continue;
         }
     }

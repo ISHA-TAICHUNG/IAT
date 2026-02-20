@@ -104,7 +104,7 @@ function onCatChange(id) {
     info.style.display = "none";
     return;
   }
-  const opt = document.querySelector(`option[value="${id}"]`);
+  const opt = document.getElementById("cat-select")?.querySelector(`option[value="${CSS.escape(id)}"]`);
   const total = opt?.dataset?.total || "?";
   info.style.display = "flex";
   info.innerHTML = `
