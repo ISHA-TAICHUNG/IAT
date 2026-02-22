@@ -62,11 +62,10 @@ function shuffleArray(arr) {
 /** 將題目的選項隨機排列，同時更新 answer 索引 */
 function shuffleOptions(question) {
     const opts = question.options;
-    const answerText = opts[question.answer];
     const indices = opts.map((_, i) => i);
     const shuffled = shuffleArray(indices);
     question.options = shuffled.map(i => opts[i]);
-    question.answer = question.options.indexOf(answerText);
+    question.answer = shuffled.indexOf(question.answer);
     return question;
 }
 

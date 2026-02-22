@@ -30,7 +30,10 @@ function getForeignLabel(catName) {
 async function loadCategories() {
   const res = await fetchWithTimeout(`${CONFIG.GAS_URL}?action=categories`);
   if (!res.ok) throw new Error("HTTP " + res.status);
-  return res.json();
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  if (!Array.isArray(data)) throw new Error("回傳格式錯誤");
+  return data;
 }
 
 // ===== 下拉選單渲染 =====

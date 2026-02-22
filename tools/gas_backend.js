@@ -626,6 +626,10 @@ function getCategories() {
 
 // ─────────────────────────── 隨機抽題 ────────────────────────────
 function getQuestions(catId, count) {
+    // 驗證 catId 格式（僅允許中文、英數字、底線）
+    if (!/^[\u4e00-\u9fff\w]+$/.test(catId)) {
+        throw new Error("無效的職類 ID");
+    }
     const cacheKey = "cat_" + catId;
     let all;
 
@@ -656,6 +660,9 @@ function getQuestions(catId, count) {
 
 // ─────────────────────────── 反饋寫入（自動去重）────────────────────────────
 function saveFeedback(body) {
+    // 截斷過長輸入防止塞爆 Sheet
+    const truncate = (s, max) => String(s || "").substring(0, max);
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(FEEDBACK_SHEET);
 
@@ -688,15 +695,15 @@ function saveFeedback(body) {
 
     sheet.appendRow([
         body.timestamp || new Date().toISOString(),
-        body.catName || "",
+        truncate(body.catName, 50),
         body.questionId || "",
-        body.question || "",
-        body.optionA || "",
-        body.optionB || "",
-        body.optionC || "",
-        body.optionD || "",
-        body.feedbackType || "",
-        body.description || "",
+        truncate(body.question, 500),
+        truncate(body.optionA, 200),
+        truncate(body.optionB, 200),
+        truncate(body.optionC, 200),
+        truncate(body.optionD, 200),
+        truncate(body.feedbackType, 20),
+        truncate(body.description, 1000),
         "否",
         1,
     ]);

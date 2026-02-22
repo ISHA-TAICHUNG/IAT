@@ -5,6 +5,7 @@ const MODE = params.get("mode"); // "review" = 錯題複習模式
 const EXAM_MODE = params.get("examMode") || CONFIG.DEFAULT_MODE; // "normal" | "speed"
 
 let questions = [];
+let isFinishing = false; // 防止 finishExam 重複觸發
 let catName = "";
 let current = 0;
 let answers = [];      // answers[i] = { chosen: number|null, hinted: bool }
@@ -56,6 +57,7 @@ async function init() {
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
             if (data.error) throw new Error(data.error);
+            if (!Array.isArray(data)) throw new Error("題庫格式錯誤");
 
             // 急速模式抽指定題數
             const numQ = modeConfig.questions;
@@ -278,16 +280,20 @@ function updateHeader() {
 // ===== 中途存檔 =====
 function autoSave() {
     if (MODE === "review") return; // 錯題複習不存檔
-    saveProgress({
-        catId: CAT_ID,
-        catName,
-        examMode: EXAM_MODE,
-        questions,
-        answers,
-        current,
-        timerSeconds,
-        savedAt: new Date().toISOString(),
-    });
+    try {
+        saveProgress({
+            catId: CAT_ID,
+            catName,
+            examMode: EXAM_MODE,
+            questions,
+            answers,
+            current,
+            timerSeconds,
+            savedAt: new Date().toISOString(),
+        });
+    } catch (e) {
+        console.warn("存檔失敗（儲存空間可能不足）：", e);
+    }
 }
 
 // ===== 提前結束 =====
@@ -304,6 +310,8 @@ function confirmEnd() {
 }
 
 function finishExam() {
+    if (isFinishing) return;
+    isFinishing = true;
     if (timerInterval) clearInterval(timerInterval);
     const totalTime = modeConfig.time * 60;
     const elapsed = totalTime - timerSeconds;

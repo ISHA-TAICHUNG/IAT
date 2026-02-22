@@ -2,7 +2,8 @@
 const raw = sessionStorage.getItem("examResult");
 if (!raw) { location.replace("index.html"); throw new Error("no data"); }
 
-const data = JSON.parse(raw);
+let data;
+try { data = JSON.parse(raw); } catch { location.replace("index.html"); throw new Error("examResult 資料損壞"); }
 const { catId, catName, questions, answers, elapsed, examMode } = data;
 const modeConf = CONFIG.MODES[examMode] || CONFIG.MODES.normal;
 
