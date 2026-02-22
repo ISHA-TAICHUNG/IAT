@@ -687,14 +687,14 @@ function saveFeedback(body) {
                 const row = lastRow - checkRows + 1 + i;
                 const currentCount = Number(data[i][11]) || 1;
                 sheet.getRange(row, 12).setValue(currentCount + 1);
-                sheet.getRange(row, 1).setValue(body.timestamp || new Date().toISOString());
+                sheet.getRange(row, 1).setValue(toTaiwanTime(body.timestamp));
                 return;
             }
         }
     }
 
     sheet.appendRow([
-        body.timestamp || new Date().toISOString(),
+        toTaiwanTime(body.timestamp),
         truncate(body.catName, 50),
         body.questionId || "",
         truncate(body.question, 500),
@@ -725,7 +725,7 @@ function logExamResult(body) {
     }
 
     sheet.appendRow([
-        body.timestamp || new Date().toISOString(),
+        toTaiwanTime(body.timestamp),
         body.catId || "",
         body.score || 0,
         body.correct || 0,
@@ -767,4 +767,14 @@ function jsonResponse(data) {
     return ContentService
         .createTextOutput(JSON.stringify(data))
         .setMimeType(ContentService.MimeType.JSON);
+}
+
+/** 將 UTC 時間字串轉換為台灣時間格式 */
+function toTaiwanTime(isoStr) {
+    try {
+        const d = isoStr ? new Date(isoStr) : new Date();
+        return Utilities.formatDate(d, "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+    } catch (_) {
+        return Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd HH:mm:ss");
+    }
 }
