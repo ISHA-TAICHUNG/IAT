@@ -184,7 +184,7 @@ function renderHomeHistory() {
       <div class="history-list">
         ${history.slice(0, 5).map(h => `
           <div class="history-item">
-            <div class="hi-cat">${escapeHtml(h.catName)}${h.mode === 'speed' ? ' <span class="hi-badge speed">⚡</span>' : ''}</div>
+            <div class="hi-cat">${escapeHtml(h.catName)}${h.mode === '急速模式' || h.mode === 'speed' ? ' <span class="hi-badge speed">⚡</span>' : ''}</div>
             <div class="hi-score ${h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail'}">${h.score} 分</div>
             <div class="hi-detail">答對 ${h.correct}/${h.total}</div>
             <div class="hi-date">${new Date(h.date).toLocaleDateString("zh-TW")}</div>
