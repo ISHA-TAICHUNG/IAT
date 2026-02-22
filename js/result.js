@@ -41,7 +41,7 @@ saveExamHistory({
   total: questions.length,
   wrong: wrong + hinted + skipped,
   elapsed: elapsed || 0,
-  mode: examMode || "normal",
+  mode: modeConf.label || "標準模式",
   date: new Date().toISOString(),
 });
 
@@ -56,7 +56,7 @@ const historyHTML = history.length > 1 ? `
     <div class="history-list">
       ${history.slice(0, 10).map((h, idx) => `
         <div class="history-item ${idx === 0 ? 'latest' : ''}">
-          <div class="hi-cat">${escapeHtml(h.catName)}${idx === 0 ? ' <span class="hi-badge">本次</span>' : ''}${h.mode === 'speed' ? ' <span class="hi-badge speed">⚡</span>' : ''}</div>
+          <div class="hi-cat">${escapeHtml(h.catName)}${idx === 0 ? ' <span class="hi-badge">本次</span>' : ''}${h.mode === '急速模式' || h.mode === 'speed' ? ' <span class="hi-badge speed">⚡</span>' : ''}</div>
           <div class="hi-score ${h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail'}">${h.score} 分</div>
           <div class="hi-detail">答對 ${h.correct}/${h.total}　${h.elapsed ? formatTime(h.elapsed) : ''}</div>
           <div class="hi-date">${new Date(h.date).toLocaleDateString("zh-TW")}</div>
@@ -141,6 +141,7 @@ async function submitResultFeedback() {
     questionId: q.id,
     questionText: q.q,
     options: q.options,
+    answer: q.answer,
     typeElId: "result-fb-type",
     descElId: "result-fb-desc",
     modalEl: document.getElementById("result-fb-modal"),

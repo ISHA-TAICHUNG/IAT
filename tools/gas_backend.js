@@ -668,9 +668,9 @@ function saveFeedback(body) {
 
     if (!sheet) {
         sheet = ss.insertSheet(FEEDBACK_SHEET);
-        sheet.appendRow(["時間", "職類", "題目ID", "題目", "選項A", "選項B", "選項C", "選項D", "反饋類型", "補充說明", "已處理", "次數"]);
+        sheet.appendRow(["時間", "職類", "題目ID", "題目", "選項A", "選項B", "選項C", "選項D", "預設答案", "反饋類型", "補充說明", "已處理", "次數"]);
         sheet.setFrozenRows(1);
-        const headerRange = sheet.getRange(1, 1, 1, 12);
+        const headerRange = sheet.getRange(1, 1, 1, 13);
         headerRange.setBackground("#1a56db");
         headerRange.setFontColor("#ffffff");
         headerRange.setFontWeight("bold");
@@ -680,13 +680,13 @@ function saveFeedback(body) {
     const lastRow = sheet.getLastRow();
     const checkRows = Math.min(50, lastRow - 1);
     if (checkRows > 0) {
-        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 12).getValues();
+        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 13).getValues();
         for (let i = data.length - 1; i >= 0; i--) {
-            if (String(data[i][2]) === String(body.questionId) && data[i][8] === (body.feedbackType || "")) {
+            if (String(data[i][2]) === String(body.questionId) && data[i][9] === (body.feedbackType || "")) {
                 // 找到重複，更新次數
                 const row = lastRow - checkRows + 1 + i;
-                const currentCount = Number(data[i][11]) || 1;
-                sheet.getRange(row, 12).setValue(currentCount + 1);
+                const currentCount = Number(data[i][12]) || 1;
+                sheet.getRange(row, 13).setValue(currentCount + 1);
                 sheet.getRange(row, 1).setValue(toTaiwanTime(body.timestamp));
                 return;
             }
@@ -702,6 +702,7 @@ function saveFeedback(body) {
         truncate(body.optionB, 200),
         truncate(body.optionC, 200),
         truncate(body.optionD, 200),
+        truncate(body.answer, 2),
         truncate(body.feedbackType, 20),
         truncate(body.description, 1000),
         "否",
@@ -724,6 +725,8 @@ function logExamResult(body) {
         headerRange.setFontWeight("bold");
     }
 
+    const MODE_LABELS = { normal: "標準模式", speed: "急速模式" };
+
     sheet.appendRow([
         toTaiwanTime(body.timestamp),
         body.catId || "",
@@ -731,7 +734,7 @@ function logExamResult(body) {
         body.correct || 0,
         body.total || 0,
         body.elapsed || 0,
-        body.mode || "normal",
+        MODE_LABELS[body.mode] || body.mode || "標準模式",
     ]);
 }
 

@@ -366,6 +366,7 @@ async function submitFeedback() {
         questionId: q.id,
         questionText: q.q,
         options: q.options,
+        answer: q.answer,
         typeElId: "fb-type",
         descElId: "fb-desc",
         modalEl: document.getElementById("feedback-modal"),
