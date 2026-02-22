@@ -26,6 +26,8 @@
 - 📱 **PWA 離線支援**：可加到手機主畫面，離線也能作答
 - 📝 Google Sheet 題庫管理面板（修正題目 / 新增題目 / 刪除題目 / 自動備份）
 - 📊 **測驗統計**：每次交卷自動回報至 Google Sheet（職類 / 分數 / 用時 / 模式）
+- 🔒 **API Token 驗證**：GAS 後端所有請求需帶 Token，防止題庫被盜取
+- 🛡️ **Rate Limit**：每分鐘每用戶最多 30 次請求，防止惡意爬取
 
 ---
 
@@ -41,6 +43,13 @@ Google Sheet (反饋紀錄 + 測驗統計)
 ```
 
 題庫 JSON **不放進 git repo**，存放於私人 Google Drive，由 GAS 代理讀取。
+
+### 安全機制
+
+- 前端所有 API 請求自動帶上 `API_TOKEN`（GET 加 query param / POST 加 body）
+- GAS 後端 `doGet` / `doPost` 驗證 Token，無效則回傳 403
+- Rate Limit：每分鐘同一用戶最多 30 次請求，超過則回傳 429
+- `catId` 格式驗證，反饋欄位長度截斷，防止注入攻擊
 
 ---
 
@@ -66,7 +75,7 @@ Google Sheet (反饋紀錄 + 測驗統計)
 
 ### 3. 填入前端設定
 
-編輯 `js/config.js`，將 `GAS_URL` 改為步驟 6 的 URL。
+編輯 `js/config.js`，將 `GAS_URL` 改為步驟 6 的 URL，並確認 `API_TOKEN` 與 GAS 後端一致。
 
 ### 4. 部署 GitHub Pages
 
@@ -158,9 +167,9 @@ Google Sheet (反饋紀錄 + 測驗統計)
 修改 CSS 或 JS 後，需更新 HTML 中的版本號以避免瀏覽器快取：
 
 ```html
-<!-- 把 ?v=20250219b 改成新日期 -->
-<link rel="stylesheet" href="css/style.css?v=20250219b" />
-<script src="js/app.js?v=20250219b"></script>
+<!-- 把 ?v=20260222b 改成新日期 -->
+<link rel="stylesheet" href="css/style.css?v=20260222b" />
+<script src="js/app.js?v=20260222b"></script>
 ```
 
 同時更新 `sw.js` 中的 `CACHE_NAME` 和靜態資源路徑版本號。
@@ -179,8 +188,8 @@ exam-site/
 ├── icons/                   PWA 圖示
 ├── css/style.css            樣式（safety orange 主題 + 深色模式）
 ├── js/
-│   ├── config.js            GAS URL、測驗模式（標準/急速）、計分設定
-│   ├── utils.js             共用工具（XSS跳脫、fetchTimeout、shuffle、深色模式、書籤、存檔、反饋）
+│   ├── config.js            GAS URL、API Token、測驗模式（標準/急速）、計分設定
+│   ├── utils.js             共用工具（XSS跳脫、fetchTimeout+自動Token、shuffle、深色模式、書籤、存檔、反饋）
 │   ├── app.js               首頁邏輯（下拉選單、模式選擇、須知彈窗、翻譯、歷史、存檔恢復）
 │   ├── exam.js              作答核心（選題、計分、倒計時、導覽列、書籤、反饋、存檔、鍵盤）
 │   └── result.js            成績計算（成績渲染、錯題反饋、歷史儲存、錯題複習）
@@ -189,5 +198,5 @@ exam-site/
 │   └── *.json               各職類題庫（上傳至 Google Drive）
 └── tools/
     ├── convert_xlsx.py      xlsx → json 轉檔工具
-    └── gas_backend.js       GAS 後端範本（題庫代理 + 反饋去重 + 修正 + 新增 + 備份 + 統計）
+    └── gas_backend.js       GAS 後端範本（題庫代理 + Token驗證 + Rate Limit + 反饋去重 + 修正 + 新增 + 備份 + 統計）
 ```
