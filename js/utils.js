@@ -18,8 +18,22 @@ function showToast(msg, dur = 2200) {
     setTimeout(() => t.classList.remove("show"), dur);
 }
 
-/** 帶 Timeout 的 Fetch */
+/** 帶 Timeout 的 Fetch（自動附加 API Token） */
 async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    // 自動附加 API Token
+    if (typeof CONFIG !== "undefined" && CONFIG.API_TOKEN) {
+        if (options.method === "POST" && options.body) {
+            try {
+                const body = JSON.parse(options.body);
+                body.token = CONFIG.API_TOKEN;
+                options = { ...options, body: JSON.stringify(body) };
+            } catch (e) { /* 非 JSON body，跳過 */ }
+        } else {
+            const sep = url.includes("?") ? "&" : "?";
+            url += `${sep}token=${encodeURIComponent(CONFIG.API_TOKEN)}`;
+        }
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {

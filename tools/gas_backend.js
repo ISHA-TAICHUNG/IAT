@@ -28,9 +28,36 @@ const CORRECTION_SHEET = "修正指令";
 const ADD_QUESTION_SHEET = "新增題目";
 const STATS_SHEET = "測驗統計";
 
+// ── API 存取令牌（與前端 config.js 一致）──
+const API_TOKEN = "IAT_2026_s3cUr3T0k3n_xK9mP7";
+
 // ── 快取：避免重複讀 Drive（每次部署後 6 小時內同一職類快取）
 const CACHE = CacheService.getScriptCache();
 const CACHE_TTL = 21600; // 6 小時
+
+// ── Rate Limit（每分鐘每 IP 最多 30 次請求）──
+const RATE_LIMIT = 30;
+const RATE_WINDOW = 60; // 秒
+
+function checkRateLimit(ip) {
+    const key = "rl_" + ip;
+    const count = Number(CACHE.get(key)) || 0;
+    if (count >= RATE_LIMIT) return false;
+    CACHE.put(key, String(count + 1), RATE_WINDOW);
+    return true;
+}
+
+function getClientIP(e) {
+    // GAS 無法取得真實 IP，用 userAgent + timestamp 模擬指紋
+    try {
+        return Utilities.computeDigest(
+            Utilities.DigestAlgorithm.MD5,
+            (e.parameter ? JSON.stringify(e.parameter) : "") + Session.getTemporaryActiveUserKey()
+        ).map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, "0")).join("").substring(0, 12);
+    } catch (_) {
+        return "unknown";
+    }
+}
 
 // ================== 自訂選單 ==================
 function onOpen() {
@@ -528,6 +555,17 @@ function clearAllCache() {
 function doGet(e) {
     const action = e.parameter.action || "";
 
+    // Token 驗證
+    if (e.parameter.token !== API_TOKEN) {
+        return jsonResponse({ error: "未授權存取" }, 403);
+    }
+
+    // Rate Limit
+    const clientId = getClientIP(e);
+    if (!checkRateLimit(clientId)) {
+        return jsonResponse({ error: "請求過於頻繁，請稍後再試" }, 429);
+    }
+
     try {
         if (action === "categories") {
             return jsonResponse(getCategories());
@@ -548,6 +586,17 @@ function doGet(e) {
 function doPost(e) {
     try {
         const body = JSON.parse(e.postData.contents);
+
+        // Token 驗證
+        if (body.token !== API_TOKEN) {
+            return jsonResponse({ error: "未授權存取" }, 403);
+        }
+
+        // Rate Limit
+        const clientId = getClientIP(e);
+        if (!checkRateLimit(clientId)) {
+            return jsonResponse({ error: "請求過於頻繁，請稍後再試" }, 429);
+        }
 
         if (body.action === "feedback") {
             saveFeedback(body);

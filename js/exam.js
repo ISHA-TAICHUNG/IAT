@@ -325,6 +325,7 @@ function finishExam() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 action: "logResult",
+                token: CONFIG.API_TOKEN,
                 catId: CAT_ID,
                 score,
                 correct: realCorrect,
