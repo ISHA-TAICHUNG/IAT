@@ -63,6 +63,7 @@ function shuffleArray(arr) {
  *  「以上皆是/以上皆非」等綜合選項固定在最後，不參與亂序 */
 function shuffleOptions(question) {
     const opts = question.options;
+    const origOptImages = question.optionImages ? question.optionImages.slice() : null;
     const pinPatterns = ['以上皆是', '以上皆非', '以上皆對', '以上皆錯', '以上都是', '以上均是'];
 
     // 分離：需固定在尾端的選項 vs 參與亂序的選項
@@ -81,9 +82,12 @@ function shuffleOptions(question) {
     // 組合：一般選項在前，固定選項在後（維持原相對順序）
     const combined = [...shuffledNormal, ...pinned];
 
-    // 重建 options 和 answer 映射
+    // 重建 options、answer、optionImages 映射
     question.options = combined.map(c => c.opt);
     question.answer = combined.findIndex(c => c.origIdx === question.answer);
+    if (origOptImages) {
+        question.optionImages = combined.map(c => origOptImages[c.origIdx]);
+    }
     return question;
 }
 

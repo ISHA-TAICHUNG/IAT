@@ -1494,7 +1494,32 @@ a {
   }
 
   .question-card {
-    padding: 20px 16px 16px;
+    padding: 16px 12px 14px;
+  }
+
+  /* 手機端題目文字優化 */
+  .q-text {
+    font-size: 0.95rem;
+    line-height: 1.8;
+    word-break: break-word;
+  }
+
+  /* 手機端選項優化 */
+  .option-btn {
+    padding: 11px 10px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    gap: 8px;
+  }
+  .option-label {
+    min-width: 26px;
+    width: 26px;
+    height: 26px;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+  .options-list {
+    gap: 8px;
   }
 
   .q-image img {
@@ -1502,12 +1527,35 @@ a {
   }
 
   .action-row {
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .btn {
-    padding: 9px 14px;
-    font-size: .85rem;
+    padding: 9px 12px;
+    font-size: .82rem;
+  }
+
+  /* 題號列壓縮 */
+  .q-top-row {
+    font-size: 0.82rem;
+  }
+  .q-number {
+    font-size: 0.82rem;
+  }
+
+  /* 考試 header 壓縮 */
+  .exam-header {
+    padding: 6px 10px;
+  }
+  .exam-meta {
+    font-size: 0.78rem;
+    gap: 8px;
+  }
+  .btn-end-early {
+    font-size: 0.75rem;
+    padding: 4px 10px;
   }
 
   .score-circle {

@@ -701,28 +701,34 @@ function getQuestions(catId, count) {
 
     var result = pool.slice(0, Math.min(count, pool.length));
 
-    // 如果用了快取（無圖片），從 Drive 補回圖片
+    // 如果用了快取（無圖片），檢查結果是否有需要補圖的題目
     if (fromCache) {
-        try {
-            var fname2 = catId + ".json";
-            var file2 = getFileByName(fname2);
-            var fullData = JSON.parse(file2.getBlob().getDataAsString("UTF-8"));
-            var imgMap = {};
-            fullData.questions.forEach(function(q) {
-                if (q.image || q.optionImages) imgMap[q.id] = q;
-            });
-            // 只有結果中有圖片題才補
-            if (Object.keys(imgMap).length > 0) {
-                result = result.map(function(q) {
-                    if (imgMap[q.id]) {
-                        if (imgMap[q.id].image) q.image = imgMap[q.id].image;
-                        if (imgMap[q.id].optionImages) q.optionImages = imgMap[q.id].optionImages;
-                    }
-                    return q;
+        // 先檢查結果中是否有引用圖片的題目，避免不必要的 Drive 讀取
+        var needsImages = result.some(function(q) {
+            var txt = q.q || '';
+            return txt.indexOf('圖') >= 0 || txt.indexOf('標章') >= 0 ||
+                   txt.indexOf('image') >= 0 || txt.indexOf('hình') >= 0 ||
+                   txt.indexOf('gambar') >= 0 || txt.indexOf('รูป') >= 0;
+        });
+        if (needsImages) {
+            try {
+                var fname2 = catId + ".json";
+                var file2 = getFileByName(fname2);
+                var fullData = JSON.parse(file2.getBlob().getDataAsString("UTF-8"));
+                var imgMap = {};
+                fullData.questions.forEach(function(q) {
+                    if (q.image || q.optionImages) imgMap[q.id] = q;
                 });
-            }
-        } catch (e) {
-            // 補圖失敗不阻擋
+                if (Object.keys(imgMap).length > 0) {
+                    result = result.map(function(q) {
+                        if (imgMap[q.id]) {
+                            if (imgMap[q.id].image) q.image = imgMap[q.id].image;
+                            if (imgMap[q.id].optionImages) q.optionImages = imgMap[q.id].optionImages;
+                        }
+                        return q;
+                    });
+                }
+            } catch (e) {}
         }
     }
 
