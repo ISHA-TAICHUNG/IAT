@@ -370,22 +370,27 @@ function finishExam() {
             }),
         }).catch(function(e) { console.warn("stats report failed:", e); });
 
-        // 回報每題答題明細（題目難度分析用）
-        var answerDetails = questions.map(function(q, i) {
+        // 回報答題明細（只送有作答且非查看答案的題目，減少資料量）
+        var answerDetails = [];
+        questions.forEach(function(q, i) {
             var a = answers[i];
-            return { qId: q.id, correct: !a.hinted && a.chosen === q.answer };
+            if (a.chosen !== null && !a.hinted) {
+                answerDetails.push({ qId: q.id, correct: a.chosen === q.answer });
+            }
         });
-        fetch(CONFIG.GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "logAnswers",
-                token: CONFIG.API_TOKEN,
-                catId: CAT_ID,
-                answers: answerDetails,
-            }),
-        }).catch(function(e) { console.warn("answers report failed:", e); });
+        if (answerDetails.length > 0) {
+            fetch(CONFIG.GAS_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "logAnswers",
+                    token: CONFIG.API_TOKEN,
+                    catId: CAT_ID,
+                    answers: answerDetails,
+                }),
+            }).catch(function(e) { console.warn("answers report failed:", e); });
+        }
     } catch (e) { console.warn("report failed:", e); }
 
     location.href = "result.html";
