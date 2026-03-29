@@ -140,9 +140,34 @@ function toggleTheme() {
     applyTheme(getThemePref() === "dark" ? "light" : "dark");
 }
 
-// 初始化主題（立即執行避免閃爍）
+// ===== 字體大小 =====
+const FONTSIZE_KEY = "fontsize_pref";
+const FONTSIZES = ["normal", "large", "xlarge"];
+const FONTSIZE_LABELS = { normal: "A", large: "A⁺", xlarge: "A⁺⁺" };
+
+function getFontSizePref() {
+    return localStorage.getItem(FONTSIZE_KEY) || "normal";
+}
+
+function applyFontSize(size) {
+    document.documentElement.setAttribute("data-fontsize", size);
+    localStorage.setItem(FONTSIZE_KEY, size);
+    document.querySelectorAll(".fontsize-btn").forEach(function(btn) {
+        btn.textContent = FONTSIZE_LABELS[size] || "A";
+    });
+}
+
+function cycleFontSize() {
+    var current = getFontSizePref();
+    var idx = FONTSIZES.indexOf(current);
+    var next = FONTSIZES[(idx + 1) % FONTSIZES.length];
+    applyFontSize(next);
+}
+
+// 初始化主題 + 字體（立即執行避免閃爍）
 (function () {
     applyTheme(getThemePref());
+    applyFontSize(getFontSizePref());
 })();
 
 // ===== 中途存檔 =====
@@ -193,35 +218,66 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
     const type = document.getElementById(typeElId).value;
     const desc = document.getElementById(descElId).value.trim();
 
+    var feedbackPayload = {
+        action: "feedback",
+        token: CONFIG.API_TOKEN,
+        timestamp: new Date().toISOString(),
+        catName: catName,
+        questionId: questionId,
+        question: questionText,
+        optionA: options ? options[0] || "" : "",
+        optionB: options ? options[1] || "" : "",
+        optionC: options ? options[2] || "" : "",
+        optionD: options ? options[3] || "" : "",
+        answer: answer != null ? LABELS[answer] : "",
+        feedbackType: type,
+        description: desc,
+    };
+
     try {
         await fetchWithTimeout(CONFIG.GAS_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "feedback",
-                timestamp: new Date().toISOString(),
-                catName,
-                questionId,
-                question: questionText,
-                optionA: options?.[0] || "",
-                optionB: options?.[1] || "",
-                optionC: options?.[2] || "",
-                optionD: options?.[3] || "",
-                answer: answer != null ? LABELS[answer] : "",
-                feedbackType: type,
-                description: desc,
-            }),
+            body: JSON.stringify(feedbackPayload),
         });
-        // no-cors 模式無法讀取 response，fetch 沒拋錯就當成功
         showToast(typeof t === 'function' ? t('fb.success') : 'Submitted!');
     } catch (e) {
-        console.warn("Feedback submit failed:", e);
-        showToast(typeof t === 'function' ? t('fb.error') : 'Failed to submit');
+        console.warn("Feedback submit failed, queuing:", e);
+        // 離線佇列：暫存到 localStorage
+        var queue = JSON.parse(localStorage.getItem("feedback_queue") || "[]");
+        queue.push(feedbackPayload);
+        localStorage.setItem("feedback_queue", JSON.stringify(queue));
+        showToast(typeof t === 'function' ? t('fb.queued') : 'Saved offline, will send later');
     }
 
     btn.disabled = false;
-    btn.textContent = "送出";
+    btn.textContent = typeof t === 'function' ? t('fb.submit') : 'Submit';
     modalEl.classList.remove("open");
     document.getElementById(descElId).value = "";
+}
+
+// 離線反饋佇列：上線後自動補送
+function flushFeedbackQueue() {
+    var queue = JSON.parse(localStorage.getItem("feedback_queue") || "[]");
+    if (queue.length === 0) return;
+    var remaining = [];
+    queue.forEach(function(payload) {
+        fetch(CONFIG.GAS_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        }).catch(function() {
+            remaining.push(payload);
+        });
+    });
+    // 短暫延遲後更新佇列（等 fetch 完成）
+    setTimeout(function() {
+        if (remaining.length > 0) {
+            localStorage.setItem("feedback_queue", JSON.stringify(remaining));
+        } else {
+            localStorage.removeItem("feedback_queue");
+        }
+    }, 3000);
 }

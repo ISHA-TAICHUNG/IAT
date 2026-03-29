@@ -388,6 +388,7 @@ window.addEventListener('langchange', function() {
 });
 
 // ===== 初始化 =====
+if (typeof flushFeedbackQueue === 'function') flushFeedbackQueue();
 loadCategories()
   .then(renderDropdown)
   .catch(function(err) {

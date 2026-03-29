@@ -110,6 +110,17 @@ if (timeStr) {
 }
 card.appendChild(stats);
 
+// 操作/共同配比（僅含 subject 的題庫顯示）
+var opCount = questions.filter(function(q) { return q.subject === '操作'; }).length;
+var cmCount = questions.filter(function(q) { return q.subject === '共同'; }).length;
+if (opCount > 0 || cmCount > 0) {
+  var ratioDiv = document.createElement('div');
+  ratioDiv.className = 'stats-ratio';
+  ratioDiv.textContent = t('result.ratio.op') + ' ' + opCount + ' ' + t('mode.questions') +
+    ' / ' + t('result.ratio.cm') + ' ' + cmCount + ' ' + t('mode.questions');
+  card.appendChild(ratioDiv);
+}
+
 // 說明
 var disc = document.createElement('p');
 disc.style.cssText = 'font-size:.82rem;color:var(--gray-500);margin-bottom:20px;';

@@ -120,6 +120,55 @@
   .pwa-step { min-width: 0; }
 }
 
+/* ===== 成績配比列 ===== */
+.stats-ratio {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--gray-500);
+  margin: 4px 0 8px;
+  padding: 6px 12px;
+  background: var(--gray-50);
+  border-radius: 8px;
+}
+[data-theme="dark"] .stats-ratio { background: rgba(255,255,255,0.05); }
+
+/* ===== 字體大小調整 ===== */
+.fontsize-btn {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--gray-600);
+  margin-left: 8px;
+}
+.fontsize-btn:hover { background: var(--gray-100); }
+[data-theme="dark"] .fontsize-btn { border-color: var(--gray-600); color: var(--gray-400); }
+[data-theme="dark"] .fontsize-btn:hover { background: var(--gray-700); }
+
+[data-fontsize="large"] .q-text { font-size: 1.15rem !important; }
+[data-fontsize="large"] .option-btn { font-size: 1.05rem !important; }
+[data-fontsize="large"] .option-label { min-width: 30px; width: 30px; height: 30px; }
+
+[data-fontsize="xlarge"] .q-text { font-size: 1.3rem !important; }
+[data-fontsize="xlarge"] .option-btn { font-size: 1.18rem !important; }
+[data-fontsize="xlarge"] .option-label { min-width: 34px; width: 34px; height: 34px; font-size: 0.9rem; }
+
+/* ===== 模擬考模式 ===== */
+.option-btn.mock-selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.option-btn.mock-selected .option-label {
+  background: var(--accent);
+  color: #fff;
+}
+[data-theme="dark"] .option-btn.mock-selected {
+  border-color: var(--accent);
+  background: rgba(26, 86, 219, 0.15);
+}
+
 /* ===== CSS 變數 ===== */
 :root {
   --primary: #e85d04;

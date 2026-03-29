@@ -17,6 +17,7 @@ const CONFIG = {
     MODES: {
         normal: { label: "標準模式", questions: 80, time: 80, icon: "📋" },
         speed: { label: "急速模式", questions: 20, time: 20, icon: "⚡" },
+        mock: { label: "模擬考", questions: 80, time: 100, icon: "🎯" },
     },
     DEFAULT_MODE: "normal",
 };

@@ -173,10 +173,12 @@ function goTo(idx) {
 function renderQuestion() {
     const q = questions[current];
     const ans = answers[current];
-    const isAnswered = ans.chosen !== null || ans.hinted;
+    const isMock = EXAM_MODE === 'mock';
+    const isAnswered = isMock ? false : (ans.chosen !== null || ans.hinted);
+    const hasChosen = ans.chosen !== null;
     const bookmarked = isBookmarked(CAT_ID, q.id);
 
-    const noScoreBadge = ans.hinted
+    const noScoreBadge = (!isMock && ans.hinted)
         ? `<div class="no-score-badge">${t('exam.noscore')}</div>` : "";
 
     const area = document.getElementById("main-area");
@@ -195,12 +197,15 @@ function renderQuestion() {
         <div class="options-list" id="options">
           ${q.options.map((opt, i) => {
         let cls = "";
-        if (isAnswered) {
+        if (isMock) {
+            if (i === ans.chosen) cls = "mock-selected";
+        } else if (isAnswered) {
             if (i === q.answer) cls = ans.hinted && ans.chosen === null ? "hint" : "correct";
             else if (i === ans.chosen && ans.chosen !== q.answer) cls = "wrong";
         } else if (i === ans.chosen) cls = "selected";
+        var btnDisabled = isMock ? false : isAnswered;
         return `
-              <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" ${isAnswered ? "disabled" : ""}>
+              <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" ${btnDisabled ? "disabled" : ""}>
                 <span class="option-label">${LABELS[i]}</span>
                 ${q.optionImages && q.optionImages[i]
                   ? `<img src="${q.optionImages[i]}" alt="選項${LABELS[i]}" class="option-image" loading="lazy">`
@@ -208,7 +213,7 @@ function renderQuestion() {
               </button>`;
     }).join("")}
         </div>
-        <div class="answer-hint ${isAnswered ? "show " + (ans.hinted && ans.chosen === null ? "hint-only" : ans.chosen === q.answer ? "correct" : "wrong") : ""}"
+        ${isMock ? '' : `<div class="answer-hint ${isAnswered ? "show " + (ans.hinted && ans.chosen === null ? "hint-only" : ans.chosen === q.answer ? "correct" : "wrong") : ""}"
           id="answer-hint">
           ${isAnswered
             ? ans.hinted && ans.chosen === null
@@ -217,12 +222,16 @@ function renderQuestion() {
                     ? t('exam.correct')
                     : `${t('exam.wrong.prefix')}${escapeHtml(q.options[q.answer])}`
             : ""}
-        </div>
+        </div>`}
       </div>
 
       <div class="action-row">
         <button class="btn btn-outline" onclick="prevQ()" ${current === 0 ? "disabled" : ""}>${t('exam.btn.prev')}</button>
-        ${isAnswered
+        ${isMock
+            ? `<button class="btn btn-primary" onclick="nextQ()">
+               ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
+             </button>`
+            : isAnswered
             ? `<button class="btn btn-primary" onclick="nextQ()">
                ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
              </button>`
@@ -235,8 +244,13 @@ function renderQuestion() {
 // ===== 選擇選項 =====
 function selectOption(idx) {
     const ans = answers[current];
-    if (ans.chosen !== null || ans.hinted) return;
-    ans.chosen = idx;
+    if (EXAM_MODE === 'mock') {
+        // 模擬考：可以改答案
+        ans.chosen = idx;
+    } else {
+        if (ans.chosen !== null || ans.hinted) return;
+        ans.chosen = idx;
+    }
     renderQuestion();
     updateHeader();
     renderNav();
@@ -354,8 +368,25 @@ function finishExam() {
                 mode: EXAM_MODE,
                 timestamp: new Date().toISOString(),
             }),
-        }).catch(e => console.warn("統計回報失敗：", e));
-    } catch (e) { console.warn("統計回報失敗：", e); }
+        }).catch(function(e) { console.warn("stats report failed:", e); });
+
+        // 回報每題答題明細（題目難度分析用）
+        var answerDetails = questions.map(function(q, i) {
+            var a = answers[i];
+            return { qId: q.id, correct: !a.hinted && a.chosen === q.answer };
+        });
+        fetch(CONFIG.GAS_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "logAnswers",
+                token: CONFIG.API_TOKEN,
+                catId: CAT_ID,
+                answers: answerDetails,
+            }),
+        }).catch(function(e) { console.warn("answers report failed:", e); });
+    } catch (e) { console.warn("report failed:", e); }
 
     location.href = "result.html";
 }

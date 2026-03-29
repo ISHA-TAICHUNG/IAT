@@ -617,6 +617,10 @@ function doPost(e) {
             logExamResult(body);
             return jsonResponse({ success: true });
         }
+        if (body.action === "logAnswers") {
+            logAnswerDetails(body);
+            return jsonResponse({ success: true });
+        }
         return jsonResponse({ error: "未知 action" }, 400);
     } catch (err) {
         return jsonResponse({ error: err.message }, 500);
@@ -813,6 +817,60 @@ function logExamResult(body) {
         body.elapsed || 0,
         MODE_LABELS[body.mode] || body.mode || "標準模式",
     ]);
+}
+
+// ─────────────────────────── 題目難度統計 ────────────────────────────
+function logAnswerDetails(body) {
+    var DIFFICULTY_SHEET = "題目難度";
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName(DIFFICULTY_SHEET);
+
+    if (!sheet) {
+        sheet = ss.insertSheet(DIFFICULTY_SHEET);
+        sheet.appendRow(["職類ID", "題目ID", "答對次數", "答錯次數", "錯誤率%"]);
+        sheet.setFrozenRows(1);
+        var headerRange = sheet.getRange(1, 1, 1, 5);
+        headerRange.setBackground("#7c3aed");
+        headerRange.setFontColor("#ffffff");
+        headerRange.setFontWeight("bold");
+    }
+
+    var catId = body.catId || "";
+    var answers = body.answers || [];
+    if (!catId || answers.length === 0) return;
+
+    // 讀取現有資料建立索引
+    var lastRow = sheet.getLastRow();
+    var existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 5).getValues() : [];
+    var rowMap = {};  // "catId__qId" -> row number (1-based)
+    existingData.forEach(function(row, i) {
+        var key = String(row[0]) + "__" + String(row[1]);
+        rowMap[key] = i + 2;  // +2 因為 header 在 row 1
+    });
+
+    // 批次更新
+    answers.forEach(function(a) {
+        var key = catId + "__" + String(a.qId);
+        var existingRow = rowMap[key];
+
+        if (existingRow) {
+            // 更新現有行
+            var range = sheet.getRange(existingRow, 3, 1, 3);
+            var vals = range.getValues()[0];
+            var correctCount = Number(vals[0]) || 0;
+            var wrongCount = Number(vals[1]) || 0;
+            if (a.correct) correctCount++; else wrongCount++;
+            var errorRate = Math.round(wrongCount / (correctCount + wrongCount) * 100);
+            range.setValues([[correctCount, wrongCount, errorRate]]);
+        } else {
+            // 新增行
+            var correctCount = a.correct ? 1 : 0;
+            var wrongCount = a.correct ? 0 : 1;
+            var errorRate = a.correct ? 0 : 100;
+            sheet.appendRow([catId, a.qId, correctCount, wrongCount, errorRate]);
+            rowMap[key] = sheet.getLastRow();
+        }
+    });
 }
 
 // ─────────────────────────── 自動備份 ────────────────────────────
