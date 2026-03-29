@@ -140,6 +140,28 @@
       </div>
     </div>
 
+    <!-- PWA 安裝提示 -->
+    <div class="pwa-install-guide" id="pwa-guide">
+      <div class="pwa-guide-header">
+        <span class="pwa-guide-icon">📲</span>
+        <div>
+          <strong data-i18n="pwa.title">加入主畫面，像 App 一樣使用</strong>
+          <p data-i18n="pwa.desc">安裝到手機桌面，隨時開啟練習，支援離線作答。</p>
+        </div>
+        <button class="pwa-guide-close" onclick="closePwaGuide()" aria-label="close">&times;</button>
+      </div>
+      <div class="pwa-guide-steps">
+        <div class="pwa-step ios-step">
+          <span class="pwa-step-badge">iOS</span>
+          <span data-i18n="pwa.ios">Safari 點「分享」→「加入主畫面」</span>
+        </div>
+        <div class="pwa-step android-step">
+          <span class="pwa-step-badge android">Android</span>
+          <span data-i18n="pwa.android">Chrome 點「⋮ 選單」→「加入主畫面」</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 歷史成績 -->
     <div id="history-section"></div>
   </main>
@@ -160,6 +182,19 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function() {});
     }
+    // PWA 提示：已安裝或已關閉就隱藏
+    function closePwaGuide() {
+      document.getElementById('pwa-guide').classList.add('hidden');
+      localStorage.setItem('pwa_guide_closed', '1');
+    }
+    (function() {
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      var closed = localStorage.getItem('pwa_guide_closed');
+      if (isStandalone || closed) {
+        var el = document.getElementById('pwa-guide');
+        if (el) el.classList.add('hidden');
+      }
+    })();
   </script>
 </body>
 

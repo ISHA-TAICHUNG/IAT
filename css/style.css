@@ -34,6 +34,92 @@
   .lang-bar { gap: 3px; padding: 4px 6px; }
 }
 
+/* ===== PWA 安裝提示 ===== */
+.pwa-install-guide {
+  background: linear-gradient(135deg, var(--primary-light) 0%, #fff 100%);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+[data-theme="dark"] .pwa-install-guide {
+  background: linear-gradient(135deg, rgba(232,93,4,0.12) 0%, var(--card-bg) 100%);
+}
+.pwa-guide-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pwa-guide-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.pwa-guide-header strong {
+  font-size: 0.95rem;
+  color: var(--gray-900);
+  display: block;
+  margin-bottom: 2px;
+}
+.pwa-guide-header p {
+  font-size: 0.82rem;
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.4;
+}
+.pwa-guide-close {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.pwa-guide-close:hover { color: var(--gray-600); }
+.pwa-guide-steps {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.pwa-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--gray-700);
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px;
+  padding: 8px 12px;
+  flex: 1;
+  min-width: 200px;
+}
+[data-theme="dark"] .pwa-step {
+  background: rgba(255,255,255,0.06);
+  color: var(--gray-300);
+}
+.pwa-step-badge {
+  background: #333;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.pwa-step-badge.android {
+  background: #3ddc84;
+  color: #000;
+}
+.pwa-install-guide.hidden { display: none; }
+@media (max-width: 600px) {
+  .pwa-guide-steps { flex-direction: column; }
+  .pwa-step { min-width: 0; }
+}
+
 /* ===== CSS 變數 ===== */
 :root {
   --primary: #e85d04;
