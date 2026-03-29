@@ -182,6 +182,7 @@ function renderQuestion() {
           </button>
         </div>
         <div class="q-text">${escapeHtml(q.q)}</div>
+        ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="lazy" onclick="openImageModal(this.src)"></div>` : ''}
         <div class="options-list" id="options">
           ${q.options.map((opt, i) => {
         let cls = "";
@@ -190,9 +191,11 @@ function renderQuestion() {
             else if (i === ans.chosen && ans.chosen !== q.answer) cls = "wrong";
         } else if (i === ans.chosen) cls = "selected";
         return `
-              <button class="option-btn ${cls}" onclick="selectOption(${i})" ${isAnswered ? "disabled" : ""}>
+              <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" ${isAnswered ? "disabled" : ""}>
                 <span class="option-label">${LABELS[i]}</span>
-                <span>${escapeHtml(opt)}</span>
+                ${q.optionImages && q.optionImages[i]
+                  ? `<img src="${q.optionImages[i]}" alt="選項${LABELS[i]}" class="option-image" loading="lazy">`
+                  : `<span>${escapeHtml(opt)}</span>`}
               </button>`;
     }).join("")}
         </div>
@@ -372,6 +375,17 @@ async function submitFeedback() {
         modalEl: document.getElementById("feedback-modal"),
         btn: document.querySelector('#feedback-modal .btn-primary'),
     });
+}
+
+// ===== 圖片放大 Modal =====
+function openImageModal(src) {
+    const modal = document.getElementById('image-modal');
+    const img = document.getElementById('modal-image');
+    img.src = src;
+    modal.classList.add('show');
+}
+function closeImageModal() {
+    document.getElementById('image-modal').classList.remove('show');
 }
 
 // ===== 啟動 =====

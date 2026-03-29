@@ -630,32 +630,92 @@ function getQuestions(catId, count) {
     if (!/^[\u4e00-\u9fff\w]+$/.test(catId)) {
         throw new Error("無效的職類 ID");
     }
-    const cacheKey = "cat_" + catId;
-    let all;
+    var cacheKey = "cat_" + catId;
+    var all;
+    var fromCache = false;
 
-    const cached = CACHE.get(cacheKey);
+    var cached = CACHE.get(cacheKey);
     if (cached) {
         all = JSON.parse(cached);
+        fromCache = true;
     } else {
-        const fname = catId + ".json";
-        const file = getFileByName(fname);
-        const data = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
+        var fname = catId + ".json";
+        var file = getFileByName(fname);
+        var data = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
         all = data.questions;
-        // 快取題庫（不含抽題結果）— 但大檔案可能超過 100KB 限制
+
+        // 快取時去掉圖片（大幅縮小），加速後續請求
         try {
-            CACHE.put(cacheKey, JSON.stringify(all), CACHE_TTL);
+            var lite = all.map(function(q) {
+                if (q.image || q.optionImages) {
+                    var copy = {};
+                    for (var k in q) {
+                        if (k !== "image" && k !== "optionImages") copy[k] = q[k];
+                    }
+                    return copy;
+                }
+                return q;
+            });
+            CACHE.put(cacheKey, JSON.stringify(lite), CACHE_TTL);
         } catch (e) {
             // 超過 CacheService 限制，跳過快取
         }
     }
 
-    // Fisher-Yates shuffle → 取前 count 題
-    const arr = all.slice();
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
+    // Fisher-Yates shuffle
+    function shuffle(arr) {
+        var b = arr.slice();
+        for (var i = b.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = b[i]; b[i] = b[j]; b[j] = tmp;
+        }
+        return b;
     }
-    return arr.slice(0, Math.min(count, arr.length));
+
+    // 依 subject 欄位做 80/20 配比抽題（操作 80%、共同 20%）
+    var hasSubject = all.some(function(q) { return q.subject; });
+    var pool;
+
+    if (hasSubject) {
+        var opQs = all.filter(function(q) { return q.subject === "操作"; });
+        var cmQs = all.filter(function(q) { return q.subject === "共同"; });
+        var opCount = Math.round(count * 0.8);
+        var cmCount = count - opCount;
+        var picked = shuffle(opQs).slice(0, Math.min(opCount, opQs.length))
+            .concat(shuffle(cmQs).slice(0, Math.min(cmCount, cmQs.length)));
+        pool = shuffle(picked);
+    } else {
+        pool = shuffle(all);
+    }
+
+    var result = pool.slice(0, Math.min(count, pool.length));
+
+    // 如果用了快取（無圖片），從 Drive 補回圖片
+    if (fromCache) {
+        try {
+            var fname2 = catId + ".json";
+            var file2 = getFileByName(fname2);
+            var fullData = JSON.parse(file2.getBlob().getDataAsString("UTF-8"));
+            var imgMap = {};
+            fullData.questions.forEach(function(q) {
+                if (q.image || q.optionImages) imgMap[q.id] = q;
+            });
+            // 只有結果中有圖片題才補
+            if (Object.keys(imgMap).length > 0) {
+                result = result.map(function(q) {
+                    if (imgMap[q.id]) {
+                        if (imgMap[q.id].image) q.image = imgMap[q.id].image;
+                        if (imgMap[q.id].optionImages) q.optionImages = imgMap[q.id].optionImages;
+                    }
+                    return q;
+                });
+            }
+        } catch (e) {
+            // 補圖失敗不阻擋
+        }
+    }
+
+    return result;
 }
 
 // ─────────────────────────── 反饋寫入（自動去重）────────────────────────────

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=20260222c" />
+    <link rel="stylesheet" href="css/style.css?v=20260329d" />
 </head>
 
 <body>
@@ -98,9 +98,15 @@
 
     <div class="toast" id="toast"></div>
 
-    <script src="js/config.js?v=20260222c"></script>
-    <script src="js/utils.js?v=20260222c"></script>
-    <script src="js/exam.js?v=20260222c"></script>
+    <!-- 圖片放大 Modal -->
+    <div class="image-modal" id="image-modal" onclick="closeImageModal()">
+        <img id="modal-image" alt="放大圖片">
+        <div class="image-modal-hint">點擊任意處關閉</div>
+    </div>
+
+    <script src="js/config.js?v=20260329d"></script>
+    <script src="js/utils.js?v=20260329d"></script>
+    <script src="js/exam.js?v=20260329d"></script>
 </body>
 
 </html>

@@ -59,13 +59,31 @@ function shuffleArray(arr) {
     return a;
 }
 
-/** 將題目的選項隨機排列，同時更新 answer 索引 */
+/** 將題目的選項隨機排列，同時更新 answer 索引
+ *  「以上皆是/以上皆非」等綜合選項固定在最後，不參與亂序 */
 function shuffleOptions(question) {
     const opts = question.options;
-    const indices = opts.map((_, i) => i);
-    const shuffled = shuffleArray(indices);
-    question.options = shuffled.map(i => opts[i]);
-    question.answer = shuffled.indexOf(question.answer);
+    const pinPatterns = ['以上皆是', '以上皆非', '以上皆對', '以上皆錯', '以上都是', '以上均是'];
+
+    // 分離：需固定在尾端的選項 vs 參與亂序的選項
+    const pinned = []; // { origIdx, opt }
+    const normal = []; // { origIdx, opt }
+    opts.forEach((opt, i) => {
+        if (pinPatterns.some(p => opt.includes(p))) {
+            pinned.push({ origIdx: i, opt });
+        } else {
+            normal.push({ origIdx: i, opt });
+        }
+    });
+
+    // 只亂序一般選項
+    const shuffledNormal = shuffleArray(normal);
+    // 組合：一般選項在前，固定選項在後（維持原相對順序）
+    const combined = [...shuffledNormal, ...pinned];
+
+    // 重建 options 和 answer 映射
+    question.options = combined.map(c => c.opt);
+    question.answer = combined.findIndex(c => c.origIdx === question.answer);
     return question;
 }
 
