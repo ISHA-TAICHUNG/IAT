@@ -23,10 +23,21 @@
 
 // ★ 填入你的 Google Drive 資料夾 ID
 const FOLDER_ID = "1pHdmbCqI8iq2nXmQnqf0FLrdYGffybgO";
+// ★ 填入你的 Google Sheets 試算表 ID（用於反饋/統計寫入）
+const SPREADSHEET_ID = "1oFF-_WWQ42fZm5wulk-k7QLRNtf4L0PYY7xLh7OqmDY";
 const FEEDBACK_SHEET = "反饋紀錄";
 const CORRECTION_SHEET = "修正指令";
 const ADD_QUESTION_SHEET = "新增題目";
 const STATS_SHEET = "測驗統計";
+
+// 取得試算表（相容附屬和獨立專案）
+function getSpreadsheet() {
+    try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        if (ss) return ss;
+    } catch(e) {}
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
 
 // ── API 存取令牌（與前端 config.js 一致）──
 const API_TOKEN = "IAT_2026_s3cUr3T0k3n_xK9mP7";
@@ -75,7 +86,7 @@ function onOpen() {
 
 // ================== 修正指令分頁 ==================
 function createCorrectionSheet() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(CORRECTION_SHEET);
 
     if (sheet) {
@@ -195,7 +206,7 @@ function createCorrectionSheet() {
 // ================== 執行修正 ==================
 function applyCorrections() {
     const ui = SpreadsheetApp.getUi();
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName(CORRECTION_SHEET);
 
     if (!sheet) {
@@ -347,7 +358,7 @@ function updateCategoryTotal(catId, newTotal) {
 
 // ================== 新增題目分頁 ==================
 function createAddQuestionSheet() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(ADD_QUESTION_SHEET);
 
     if (sheet) {
@@ -403,7 +414,7 @@ function createAddQuestionSheet() {
 // ================== 執行新增題目 ==================
 function addNewQuestions() {
     const ui = SpreadsheetApp.getUi();
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName(ADD_QUESTION_SHEET);
 
     if (!sheet) {
@@ -723,7 +734,7 @@ function saveFeedback(body) {
     // 截斷過長輸入防止塞爆 Sheet
     const truncate = (s, max) => String(s || "").substring(0, max);
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(FEEDBACK_SHEET);
 
     if (!sheet) {
@@ -772,7 +783,7 @@ function saveFeedback(body) {
 
 // ─────────────────────────── 測驗統計 ────────────────────────────
 function logExamResult(body) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(STATS_SHEET);
 
     if (!sheet) {

@@ -28,7 +28,7 @@ async function init() {
         timerSeconds = saved.timerSeconds;
         catName = saved.catName;
 
-        document.title = `${catName} — 作答中`;
+        document.title = catName + ' — ' + t('exam.title');
         document.getElementById("exam-title").textContent = catName;
         document.getElementById("q-total").textContent = questions.length;
         document.getElementById("loading").remove();
@@ -77,7 +77,7 @@ async function init() {
         // 隨機排列每題選項
         questions.forEach(q => shuffleOptions(q));
 
-        document.title = `${catName} — 作答中`;
+        document.title = catName + ' — ' + t('exam.title');
         document.getElementById("exam-title").textContent = catName;
 
         answers = questions.map(() => ({ chosen: null, hinted: false }));
@@ -139,10 +139,10 @@ function renderNav() {
         const toggle = document.createElement("button");
         toggle.className = "q-nav-toggle";
         toggle.id = "q-nav-toggle";
-        toggle.textContent = "${t('exam.nav.expand')}";
+        toggle.textContent = t('exam.nav.expand');
         toggle.onclick = () => {
             const expanded = navEl.classList.toggle("expanded");
-            toggle.textContent = expanded ? "${t('exam.nav.collapse')}" : "${t('exam.nav.expand')}";
+            toggle.textContent = expanded ? t('exam.nav.collapse') : t('exam.nav.expand');
         };
         wrap.appendChild(toggle);
 
