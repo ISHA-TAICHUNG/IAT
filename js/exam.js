@@ -38,7 +38,7 @@ async function init() {
         renderNav();
         startTimer();
         document.addEventListener("keydown", handleKey);
-        showToast("📂 已恢復上次進度");
+        showToast(t('resume.restored'));
         return;
     }
 
@@ -46,9 +46,9 @@ async function init() {
         if (MODE === "review") {
             // 錯題複習模式：從 sessionStorage 讀取錯題
             const stored = sessionStorage.getItem("reviewQuestions");
-            if (!stored) throw new Error("找不到錯題資料");
+            if (!stored) throw new Error("No review data found");
             questions = JSON.parse(stored);
-            catName = CAT_ID + "（錯題複習）";
+            catName = CAT_ID + t('exam.review.suffix');
         } else {
             // 一般模式：從 GAS 取題
             const res = await fetchWithTimeout(
@@ -57,12 +57,21 @@ async function init() {
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
             if (data.error) throw new Error(data.error);
-            if (!Array.isArray(data)) throw new Error("題庫格式錯誤");
+            if (!Array.isArray(data)) throw new Error("Invalid data format");
 
-            // 急速模式抽指定題數
+            // 急速模式抽指定題數（維持 80/20 配比）
             const numQ = modeConfig.questions;
-            questions = shuffleArray(data).slice(0, numQ);
-            catName = EXAM_MODE === "speed" ? `${CAT_ID}（急速模式）` : CAT_ID;
+            const hasSubject = data.some(function(q) { return q.subject; });
+            if (hasSubject && numQ < data.length) {
+                const opQs = shuffleArray(data.filter(function(q) { return q.subject === '操作'; }));
+                const cmQs = shuffleArray(data.filter(function(q) { return q.subject === '共同'; }));
+                const opN = Math.round(numQ * 0.8);
+                const cmN = numQ - opN;
+                questions = shuffleArray(opQs.slice(0, opN).concat(cmQs.slice(0, cmN)));
+            } else {
+                questions = shuffleArray(data).slice(0, numQ);
+            }
+            catName = EXAM_MODE === "speed" ? `${CAT_ID}${t('exam.speed.suffix')}` : CAT_ID;
         }
 
         // 隨機排列每題選項
@@ -82,10 +91,10 @@ async function init() {
         startTimer();
         document.addEventListener("keydown", handleKey);
     } catch (e) {
-        console.warn("載入題庫失敗：", e);
-        document.getElementById("loading").innerHTML =
-            `<p style="color:red;padding:40px 0">載入題庫失敗：${escapeHtml(e.message)}<br>請確認網路連線正常或稍後再試。</p>
-       <a href="index.html" class="btn btn-outline" style="margin-top:12px">← 返回首頁</a>`;
+        console.warn("Load failed:", e);
+        var el = document.getElementById("loading");
+        el.textContent = t('error.load') + e.message + ' ' + t('error.network');
+        el.style.color = 'red';
     }
 }
 
@@ -102,7 +111,7 @@ function startTimer() {
         if (timerSeconds <= 0) {
             clearInterval(timerInterval);
             timerEl.textContent = "00:00";
-            showToast("⏰ 時間到！自動交卷", 3000);
+            showToast(t('exam.timeup'), 3000);
             setTimeout(() => finishExam(), 1500);
             return;
         }
@@ -130,10 +139,10 @@ function renderNav() {
         const toggle = document.createElement("button");
         toggle.className = "q-nav-toggle";
         toggle.id = "q-nav-toggle";
-        toggle.textContent = "▼ 展開題目導覽";
+        toggle.textContent = "${t('exam.nav.expand')}";
         toggle.onclick = () => {
             const expanded = navEl.classList.toggle("expanded");
-            toggle.textContent = expanded ? "▲ 收合題目導覽" : "▼ 展開題目導覽";
+            toggle.textContent = expanded ? "${t('exam.nav.collapse')}" : "${t('exam.nav.expand')}";
         };
         wrap.appendChild(toggle);
 
@@ -168,7 +177,7 @@ function renderQuestion() {
     const bookmarked = isBookmarked(CAT_ID, q.id);
 
     const noScoreBadge = ans.hinted
-        ? `<div class="no-score-badge">💡 此題不列入計分</div>` : "";
+        ? `<div class="no-score-badge">${t('exam.noscore')}</div>` : "";
 
     const area = document.getElementById("main-area");
     area.innerHTML = `
@@ -176,8 +185,8 @@ function renderQuestion() {
       <div class="question-card">
         ${noScoreBadge}
         <div class="q-top-row">
-          <div class="q-number">第 ${current + 1} 題 / 共 ${questions.length} 題</div>
-          <button class="btn-bookmark ${bookmarked ? "active" : ""}" onclick="toggleBm()" title="${bookmarked ? "取消收藏" : "收藏此題"}">
+          <div class="q-number">${t('exam.q.prefix')}${current + 1}${t('exam.q.of')}${questions.length}${t('exam.q.unit')}</div>
+          <button class="btn-bookmark ${bookmarked ? "active" : ""}" onclick="toggleBm()" title="${bookmarked ? t('exam.bookmark.remove') : t('exam.bookmark.add')}">
             ${bookmarked ? "★" : "☆"}
           </button>
         </div>
@@ -203,22 +212,22 @@ function renderQuestion() {
           id="answer-hint">
           ${isAnswered
             ? ans.hinted && ans.chosen === null
-                ? `💡 正確答案為：${escapeHtml(q.options[q.answer])}（已查看答案，此題不列入計分）`
+                ? `${t('exam.hint.prefix')}${escapeHtml(q.options[q.answer])}${t('exam.hint.suffix')}`
                 : ans.chosen === q.answer
-                    ? "✅ 答對了！"
-                    : `❌ 答錯了，正確答案為：${escapeHtml(q.options[q.answer])}`
+                    ? t('exam.correct')
+                    : `${t('exam.wrong.prefix')}${escapeHtml(q.options[q.answer])}`
             : ""}
         </div>
       </div>
 
       <div class="action-row">
-        <button class="btn btn-outline" onclick="prevQ()" ${current === 0 ? "disabled" : ""}>← 上一題</button>
+        <button class="btn btn-outline" onclick="prevQ()" ${current === 0 ? "disabled" : ""}>${t('exam.btn.prev')}</button>
         ${isAnswered
             ? `<button class="btn btn-primary" onclick="nextQ()">
-               ${current === questions.length - 1 ? "查看成績 →" : "下一題 →"}
+               ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
              </button>`
-            : `<button class="btn btn-hint" onclick="showHint()">💡 查看答案</button>`}
-        <button class="btn btn-feedback" onclick="openFeedback()">💬 反饋</button>
+            : `<button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`}
+        <button class="btn btn-feedback" onclick="openFeedback()">${t('exam.btn.feedback')}</button>
       </div>
     </div>`;
 }

@@ -12,13 +12,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260329d" />
+  <link rel="stylesheet" href="css/style.css?v=20260330a" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
 </head>
 
 <body>
+
+  <!-- ===== 語言選擇列 ===== -->
+  <div class="lang-bar">
+    <button class="lang-btn active" data-lang="zh-TW" onclick="setLang('zh-TW')">🇹🇼 中文</button>
+    <button class="lang-btn" data-lang="vi" onclick="setLang('vi')">🇻🇳 Việt</button>
+    <button class="lang-btn" data-lang="id" onclick="setLang('id')">🇮🇩 Indo</button>
+    <button class="lang-btn" data-lang="th" onclick="setLang('th')">🇹🇭 ไทย</button>
+    <button class="lang-btn" data-lang="en" onclick="setLang('en')">🇵🇭 Eng</button>
+  </div>
 
   <!-- ===== 進站須知 Modal ===== -->
   <div class="modal-backdrop open" id="notice-modal" role="dialog" aria-modal="true" aria-labelledby="notice-title">
@@ -30,15 +39,11 @@
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <h2 id="notice-title">使用前須知</h2>
+      <h2 id="notice-title" data-i18n="notice.title">使用前須知</h2>
       <div class="notice-body">
-        <p>本網站題目<strong>僅供參考使用</strong>，內容可能因法規更新尚未修正，或題目本身仍有疏漏，請以最新法規為準。</p>
-        <p>目前職安署尚未公開管理職類任何正式題目；本站題目主要來自<strong>網路收集與整理</strong>，內容僅供參考使用。</p>
-        <p>測驗過程中，如對題目或答案有任何疑問，歡迎隨時點選「反饋」與我們分享。</p>
-        <p>本網站為<strong>免費提供</strong>使用之服務，提交反饋時也請多一份友善與體諒，感謝您的支持。</p>
-        <p>歡迎大家一同參與，共同維護並優化網站內容品質。</p>
+        <p data-i18n="notice.p1">本網站題目僅供參考使用，內容可能因法規更新尚未修正，或題目本身仍有疏漏，請以最新法規為準。</p>
       </div>
-      <button class="btn btn-primary btn-fullwidth" id="notice-confirm" onclick="closeNotice()">我已了解，開始練習</button>
+      <button class="btn btn-primary btn-fullwidth" id="notice-confirm" onclick="closeNotice()" data-i18n="notice.btn">我已了解，開始練習</button>
     </div>
   </div>
 
@@ -52,17 +57,13 @@
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
       </div>
-      <h2 id="preexam-title">測驗前須知</h2>
+      <h2 id="preexam-title" data-i18n="notice.title">測驗前須知</h2>
       <div class="notice-body">
-        <p>本網站題目<strong>僅供參考使用</strong>，內容可能因法規更新尚未修正，或題目本身仍有疏漏，請以最新法規為準。</p>
-        <p>目前職安署尚未公開管理職類任何正式題目；本站題目主要來自<strong>網路收集與整理</strong>，內容僅供參考使用。</p>
-        <p>測驗過程中，如對題目或答案有任何疑問，歡迎隨時點選「反饋」與我們分享。</p>
-        <p>本網站為<strong>免費提供</strong>使用之服務，提交反饋時也請多一份友善與體諒，感謝您的支持。</p>
-        <p>歡迎大家一同參與，共同維護並優化網站內容品質。</p>
+        <p data-i18n="notice.p1">本網站題目僅供參考使用，內容可能因法規更新尚未修正，或題目本身仍有疏漏，請以最新法規為準。</p>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-outline" onclick="closePreExam()">取消</button>
-        <button class="btn btn-primary" id="preexam-start" onclick="confirmStartExam()">開始測驗</button>
+        <button class="btn btn-outline" onclick="closePreExam()" data-i18n="preexam.cancel">取消</button>
+        <button class="btn btn-primary" id="preexam-start" onclick="confirmStartExam()" data-i18n="preexam.start">開始測驗</button>
       </div>
     </div>
   </div>
@@ -73,24 +74,24 @@
         <img src="images/logo-header.png" alt="中華民國工業安全衛生協會" class="header-logo-img" />
       </div>
       <div>
-        <h1>管理職類測驗 線上練習</h1>
-        <p class="header-sub">職業安全衛生 — 即測即評</p>
+        <h1 data-i18n="site.header">管理職類測驗 線上練習</h1>
+        <p class="header-sub" data-i18n="site.subtitle">職業安全衛生 — 即測即評</p>
       </div>
-      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式" data-i18n="theme.dark">🌙</button>
     </div>
   </header>
 
   <main class="container">
     <div class="selector-card">
       <div class="selector-header">
-        <h2>選擇練習職類</h2>
-        <p>從下拉選單選取職類，系統將隨機抽選題目作答，滿分 100 分，60 分及格。</p>
+        <h2 data-i18n="select.heading">選擇練習職類</h2>
+        <p data-i18n="select.desc">從下拉選單選取職類，系統將隨機抽選題目作答，滿分 100 分，60 分及格。</p>
       </div>
 
       <div class="select-wrap" id="select-wrap">
         <div class="loading-inline">
           <div class="spinner-sm"></div>
-          <span>載入職類中…</span>
+          <span data-i18n="select.loading">載入職類中…</span>
         </div>
       </div>
 
@@ -98,7 +99,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
           <polygon points="5 3 19 12 5 21 5 3" />
         </svg>
-        開始測驗
+        <span data-i18n="select.start">開始測驗</span>
       </button>
     </div>
 
@@ -111,8 +112,8 @@
           </svg>
         </div>
         <div>
-          <strong>限時作答</strong>
-          <span>標準 80 題 / 急速 20 題</span>
+          <strong data-i18n="info.timed">限時作答</strong>
+          <span data-i18n="info.timed.detail">標準 80 題 / 急速 20 題</span>
         </div>
       </div>
       <div class="info-card">
@@ -122,8 +123,8 @@
           </svg>
         </div>
         <div>
-          <strong>即時作答判斷</strong>
-          <span>答完立即顯示對錯</span>
+          <strong data-i18n="info.instant">即時作答判斷</strong>
+          <span data-i18n="info.instant.detail">答完立即顯示對錯</span>
         </div>
       </div>
       <div class="info-card">
@@ -133,8 +134,8 @@
           </svg>
         </div>
         <div>
-          <strong>題目反饋機制</strong>
-          <span>協助維護題庫品質</span>
+          <strong data-i18n="info.feedback">題目反饋機制</strong>
+          <span data-i18n="info.feedback.detail">協助維護題庫品質</span>
         </div>
       </div>
     </div>
@@ -145,19 +146,19 @@
 
   <footer class="site-footer">
     <img src="images/logo.png" alt="ISHA" class="footer-logo-img" />
-    <div class="footer-org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
-    <div>管理職類暨即測即評線上練習系統</div>
+    <div class="footer-org" data-i18n="footer.org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+    <div data-i18n="footer.system">管理職類暨即測即評線上練習系統</div>
   </footer>
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/config.js?v=20260329d"></script>
-  <script src="js/utils.js?v=20260329d"></script>
-  <script src="js/app.js?v=20260329d"></script>
+  <script src="js/config.js?v=20260330a"></script>
+  <script src="js/i18n.js?v=20260330a"></script>
+  <script src="js/utils.js?v=20260330a"></script>
+  <script src="js/app.js?v=20260330a"></script>
   <script>
-    // PWA Service Worker 註冊
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => { });
+      navigator.serviceWorker.register('sw.js').catch(function() {});
     }
   </script>
 </body>

@@ -1,3 +1,39 @@
+/* ===== 語言選擇列 ===== */
+.lang-bar {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--gray-100, #f3f4f6);
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.lang-btn {
+  border: 1px solid transparent;
+  background: none;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.lang-btn:hover {
+  background: var(--gray-200, #e5e7eb);
+}
+.lang-btn.active {
+  background: var(--primary, #e85d04);
+  color: #fff;
+  border-color: var(--primary, #e85d04);
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .lang-btn { padding: 4px 7px; font-size: 0.75rem; }
+  .lang-bar { gap: 3px; padding: 4px 6px; }
+}
+
 /* ===== CSS 變數 ===== */
 :root {
   --primary: #e85d04;

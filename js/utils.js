@@ -43,7 +43,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
     } catch (e) {
         clearTimeout(timer);
         if (e.name === "AbortError") {
-            throw new Error("伺服器回應逾時，請稍後再試");
+            throw new Error(typeof t === 'function' ? t('error.timeout') : 'Server timeout');
         }
         throw e;
     }
@@ -128,7 +128,7 @@ function applyTheme(theme) {
     // 更新所有 toggle 按鈕
     document.querySelectorAll(".theme-toggle").forEach(btn => {
         btn.textContent = theme === "dark" ? "☀️" : "🌙";
-        btn.title = theme === "dark" ? "切換淺色模式" : "切換深色模式";
+        btn.title = theme === "dark" ? (typeof t === 'function' ? t('theme.light') : 'Light') : (typeof t === 'function' ? t('theme.dark') : 'Dark');
     });
 }
 
@@ -210,10 +210,10 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
             }),
         });
         // no-cors 模式無法讀取 response，fetch 沒拋錯就當成功
-        showToast("✅ 反饋已送出，感謝你！");
+        showToast(typeof t === 'function' ? t('fb.success') : 'Submitted!');
     } catch (e) {
-        console.warn("反饋送出失敗：", e);
-        showToast("⚠️ 反饋送出失敗，請檢查網路連線。");
+        console.warn("Feedback submit failed:", e);
+        showToast(typeof t === 'function' ? t('fb.error') : 'Failed to submit');
     }
 
     btn.disabled = false;

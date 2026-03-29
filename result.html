@@ -9,20 +9,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="css/style.css?v=20260329d" />
+    <link rel="stylesheet" href="css/style.css?v=20260330a" />
 </head>
 
 <body>
     <header class="site-header">
         <div class="inner">
             <div class="header-logo-wrap">
-                <img src="images/logo-header.png" alt="中華民國工業安全衛生協會" class="header-logo-img" />
+                <img src="images/logo-header.png" alt="ISHA" class="header-logo-img" />
             </div>
             <div>
-                <h1>測驗成績</h1>
-                <p class="header-sub">職業安全衛生 — 即測即評</p>
+                <h1 data-i18n="result.title">測驗成績</h1>
+                <p class="header-sub" data-i18n="site.subtitle">職業安全衛生 — 即測即評</p>
             </div>
-            <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式" data-i18n="theme.dark">🌙</button>
         </div>
     </header>
 
@@ -30,42 +30,43 @@
         <div id="result-area">
             <div class="loading">
                 <div class="spinner"></div>
-                <p>計算中…</p>
+                <p data-i18n="result.loading">計算中…</p>
             </div>
         </div>
     </main>
 
     <footer class="site-footer">
         <img src="images/logo.png" alt="ISHA" class="footer-logo-img" />
-        <div class="footer-org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
-        <div>管理職類暨即測即評線上練習系統</div>
+        <div class="footer-org" data-i18n="footer.org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+        <div data-i18n="footer.system">管理職類暨即測即評線上練習系統</div>
     </footer>
 
     <!-- 反饋 Modal -->
     <div class="modal-backdrop" id="result-fb-modal">
         <div class="modal">
-            <h3>💬 題目反饋</h3>
-            <label>反饋類型</label>
+            <h3 data-i18n="fb.title">💬 題目反饋</h3>
+            <label data-i18n="fb.type">反饋類型</label>
             <select id="result-fb-type">
-                <option value="題目有誤">題目有誤</option>
-                <option value="答案有誤">答案有誤</option>
-                <option value="選項有誤">選項有誤</option>
-                <option value="其他">其他</option>
+                <option value="題目有誤" data-i18n="fb.type.q">題目有誤</option>
+                <option value="答案有誤" data-i18n="fb.type.a">答案有誤</option>
+                <option value="選項有誤" data-i18n="fb.type.o">選項有誤</option>
+                <option value="其他" data-i18n="fb.type.other">其他</option>
             </select>
-            <label>補充說明（選填）</label>
-            <textarea id="result-fb-desc" placeholder="請描述問題…"></textarea>
+            <label data-i18n="fb.desc">補充說明（選填）</label>
+            <textarea id="result-fb-desc" placeholder="請描述問題…" data-i18n="fb.placeholder"></textarea>
             <div class="modal-actions">
-                <button class="btn btn-outline" onclick="closeResultFeedback()">取消</button>
-                <button class="btn btn-primary" onclick="submitResultFeedback()">送出</button>
+                <button class="btn btn-outline" onclick="closeResultFeedback()" data-i18n="fb.cancel">取消</button>
+                <button class="btn btn-primary" onclick="submitResultFeedback()" data-i18n="fb.submit">送出</button>
             </div>
         </div>
     </div>
 
     <div class="toast" id="toast"></div>
 
-    <script src="js/config.js?v=20260329d"></script>
-    <script src="js/utils.js?v=20260329d"></script>
-    <script src="js/result.js?v=20260329d"></script>
+    <script src="js/config.js?v=20260330a"></script>
+    <script src="js/i18n.js?v=20260330a"></script>
+    <script src="js/utils.js?v=20260330a"></script>
+    <script src="js/result.js?v=20260330a"></script>
 </body>
 
 </html>

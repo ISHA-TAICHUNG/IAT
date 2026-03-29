@@ -11,206 +11,354 @@ const LANG_LABELS = {
 const JOB_EMOJI = [
   { keyword: "堆高機", emoji: "🚜" },
   { keyword: "固定式起重機", emoji: "🏗️" },
+  { keyword: "移動式起重機", emoji: "🏗️" },
+  { keyword: "一壓", emoji: "⚙️" },
 ];
 
 function getJobEmoji(catName) {
-  const match = JOB_EMOJI.find((j) => catName.includes(j.keyword));
+  var match = JOB_EMOJI.find(function(j) { return catName.includes(j.keyword); });
   return match ? match.emoji + " " : "";
 }
 
-// 從職類名稱判斷是否即測即評外籍並取得翻譯
 function getForeignLabel(catName) {
-  for (const [zh, info] of Object.entries(LANG_LABELS)) {
-    if (catName.includes(zh)) return info;
+  for (var zh in LANG_LABELS) {
+    if (catName.includes(zh)) return LANG_LABELS[zh];
   }
   return null;
 }
 
 // ===== API =====
+var _allCategories = []; // 快取全部職類
+
 async function loadCategories() {
-  const res = await fetchWithTimeout(`${CONFIG.GAS_URL}?action=categories`);
+  var res = await fetchWithTimeout(CONFIG.GAS_URL + "?action=categories");
   if (!res.ok) throw new Error("HTTP " + res.status);
-  const data = await res.json();
+  var data = await res.json();
   if (data.error) throw new Error(data.error);
-  if (!Array.isArray(data)) throw new Error("回傳格式錯誤");
-  return data;
+  if (!Array.isArray(data)) throw new Error("Invalid format");
+  _allCategories = data;
+  return filterCategoriesByLang(data);
+}
+
+// 根據語言過濾職類
+function filterCategoriesByLang(cats) {
+  var suffix = getLangCatSuffix();
+  if (!suffix) return cats; // 中文顯示全部
+  return cats.filter(function(c) {
+    return c.id.indexOf(suffix) >= 0;
+  });
 }
 
 // ===== 下拉選單渲染 =====
 function renderDropdown(cats) {
-  const wrap = document.getElementById("select-wrap");
-  const groupOrder = ["業務主管", "作業主管", "職護", "即測即評"];
-  const groups = cats.reduce((acc, c) => {
-    (acc[c.group] = acc[c.group] || []).push(c);
-    return acc;
-  }, {});
+  var wrap = document.getElementById("select-wrap");
+  var lang = getLang();
 
-  wrap.innerHTML = `
-    <label class="select-label" for="cat-select">選擇職類</label>
-    <div class="custom-select-wrap">
-      <select id="cat-select" onchange="onCatChange(this.value)">
-        <option value="">— 請選擇職類 —</option>
-        ${groupOrder
-      .filter((g) => groups[g])
-      .map(
-        (g) => `
-          <optgroup label="${g}">
-            ${groups[g]
-            .map((cat) => {
-              const fl = getForeignLabel(cat.name);
-              const jobEmoji = fl ? getJobEmoji(cat.name) : "";
-              const label = fl
-                ? `${jobEmoji}${cat.name}　${fl.flag} ${fl.native}`
-                : cat.name;
-              return `<option value="${cat.id}" data-total="${cat.total}">${escapeHtml(label)}</option>`;
-            })
-            .join("")}
-          </optgroup>`
-      )
-      .join("")}
-      </select>
-      <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </div>
-    <div id="cat-info" class="cat-info" style="display:none"></div>
+  // 外語模式：不分群組，直接列出
+  if (lang !== 'zh-TW') {
+    wrap.textContent = '';
 
-    <div class="mode-select" id="mode-select">
-      <label class="select-label">選擇模式</label>
-      <div class="mode-options">
-        ${Object.entries(CONFIG.MODES).map(([key, m]) => `
-          <label class="mode-radio ${key === CONFIG.DEFAULT_MODE ? 'active' : ''}">
-            <input type="radio" name="exam-mode" value="${key}" ${key === CONFIG.DEFAULT_MODE ? 'checked' : ''} onchange="onModeChange('${key}')">
-            <span class="mode-icon">${m.icon}</span>
-            <span class="mode-label">${m.label}</span>
-            <span class="mode-desc">${m.questions} 題 / ${m.time} 分鐘</span>
-          </label>
-        `).join("")}
-      </div>
-    </div>
-  `;
+    var label = document.createElement('label');
+    label.className = 'select-label';
+    label.setAttribute('for', 'cat-select');
+    label.textContent = t('select.category');
+    wrap.appendChild(label);
+
+    var selectWrap = document.createElement('div');
+    selectWrap.className = 'custom-select-wrap';
+
+    var select = document.createElement('select');
+    select.id = 'cat-select';
+    select.onchange = function() { onCatChange(this.value); };
+
+    var defOpt = document.createElement('option');
+    defOpt.value = '';
+    defOpt.textContent = t('select.placeholder');
+    select.appendChild(defOpt);
+
+    cats.forEach(function(cat) {
+      var opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.dataset.total = cat.total;
+      opt.textContent = getJobEmoji(cat.id) + translateCatName(cat.id, cat.name);
+      select.appendChild(opt);
+    });
+
+    selectWrap.appendChild(select);
+    selectWrap.insertAdjacentHTML('beforeend', '<svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>');
+    wrap.appendChild(selectWrap);
+
+    var infoDiv = document.createElement('div');
+    infoDiv.id = 'cat-info';
+    infoDiv.className = 'cat-info';
+    infoDiv.style.display = 'none';
+    wrap.appendChild(infoDiv);
+
+    // 模式選擇
+    var modeDiv = document.createElement('div');
+    modeDiv.className = 'mode-select';
+    modeDiv.id = 'mode-select';
+    var modeLabel = document.createElement('label');
+    modeLabel.className = 'select-label';
+    modeLabel.textContent = t('select.mode');
+    modeDiv.appendChild(modeLabel);
+
+    var modeOpts = document.createElement('div');
+    modeOpts.className = 'mode-options';
+    Object.entries(CONFIG.MODES).forEach(function(entry) {
+      var key = entry[0], m = entry[1];
+      var mLabel = document.createElement('label');
+      mLabel.className = 'mode-radio' + (key === CONFIG.DEFAULT_MODE ? ' active' : '');
+
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'exam-mode';
+      input.value = key;
+      if (key === CONFIG.DEFAULT_MODE) input.checked = true;
+      input.onchange = function() { onModeChange(key); };
+      mLabel.appendChild(input);
+
+      var icon = document.createElement('span');
+      icon.className = 'mode-icon';
+      icon.textContent = m.icon;
+      mLabel.appendChild(icon);
+
+      var lbl = document.createElement('span');
+      lbl.className = 'mode-label';
+      lbl.textContent = t('mode.' + key);
+      mLabel.appendChild(lbl);
+
+      var desc = document.createElement('span');
+      desc.className = 'mode-desc';
+      desc.textContent = m.questions + ' ' + t('mode.questions') + ' / ' + m.time + ' ' + t('mode.minutes');
+      mLabel.appendChild(desc);
+
+      modeOpts.appendChild(mLabel);
+    });
+    modeDiv.appendChild(modeOpts);
+    wrap.appendChild(modeDiv);
+
+  } else {
+    // 中文模式：分群組
+    var groupOrder = ["業務主管", "作業主管", "職護", "即測即評"];
+    var groups = cats.reduce(function(acc, c) {
+      (acc[c.group] = acc[c.group] || []).push(c);
+      return acc;
+    }, {});
+
+    wrap.textContent = '';
+    var label2 = document.createElement('label');
+    label2.className = 'select-label';
+    label2.setAttribute('for', 'cat-select');
+    label2.textContent = t('select.category');
+    wrap.appendChild(label2);
+
+    var selectWrap2 = document.createElement('div');
+    selectWrap2.className = 'custom-select-wrap';
+
+    var select2 = document.createElement('select');
+    select2.id = 'cat-select';
+    select2.onchange = function() { onCatChange(this.value); };
+
+    var defOpt2 = document.createElement('option');
+    defOpt2.value = '';
+    defOpt2.textContent = t('select.placeholder');
+    select2.appendChild(defOpt2);
+
+    groupOrder.filter(function(g) { return groups[g]; }).forEach(function(g) {
+      var optgroup = document.createElement('optgroup');
+      optgroup.label = t('group.' + g, g);
+      groups[g].forEach(function(cat) {
+        var fl = getForeignLabel(cat.name);
+        var jobEmoji = fl ? getJobEmoji(cat.name) : "";
+        var labelText = fl ? jobEmoji + cat.name + "　" + fl.flag + " " + fl.native : cat.name;
+        var opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.dataset.total = cat.total;
+        opt.textContent = labelText;
+        optgroup.appendChild(opt);
+      });
+      select2.appendChild(optgroup);
+    });
+
+    selectWrap2.appendChild(select2);
+    selectWrap2.insertAdjacentHTML('beforeend', '<svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>');
+    wrap.appendChild(selectWrap2);
+
+    var infoDiv2 = document.createElement('div');
+    infoDiv2.id = 'cat-info';
+    infoDiv2.className = 'cat-info';
+    infoDiv2.style.display = 'none';
+    wrap.appendChild(infoDiv2);
+
+    // 模式選擇
+    var modeHtml = '<div class="mode-select" id="mode-select"><label class="select-label">' + t('select.mode') + '</label><div class="mode-options">';
+    Object.entries(CONFIG.MODES).forEach(function(entry) {
+      var key = entry[0], m = entry[1];
+      modeHtml += '<label class="mode-radio' + (key === CONFIG.DEFAULT_MODE ? ' active' : '') + '">';
+      modeHtml += '<input type="radio" name="exam-mode" value="' + key + '"' + (key === CONFIG.DEFAULT_MODE ? ' checked' : '') + ' onchange="onModeChange(\'' + key + '\')">';
+      modeHtml += '<span class="mode-icon">' + m.icon + '</span>';
+      modeHtml += '<span class="mode-label">' + t('mode.' + key) + '</span>';
+      modeHtml += '<span class="mode-desc">' + m.questions + ' ' + t('mode.questions') + ' / ' + m.time + ' ' + t('mode.minutes') + '</span>';
+      modeHtml += '</label>';
+    });
+    modeHtml += '</div></div>';
+    wrap.insertAdjacentHTML('beforeend', modeHtml);
+  }
 
   document.getElementById("btn-start").disabled = true;
-
-  // 顯示首頁歷史成績
   renderHomeHistory();
-
-  // 顯示存檔恢復提示
   renderResumeBanner();
 }
 
 function onCatChange(id) {
-  const btn = document.getElementById("btn-start");
-  const info = document.getElementById("cat-info");
+  var btn = document.getElementById("btn-start");
+  var info = document.getElementById("cat-info");
   if (!id) {
     btn.disabled = true;
     info.style.display = "none";
     return;
   }
-  const opt = document.getElementById("cat-select")?.querySelector(`option[value="${CSS.escape(id)}"]`);
-  const total = opt?.dataset?.total || "?";
+  var opt = document.querySelector('#cat-select option[value="' + CSS.escape(id) + '"]');
+  var total = opt ? opt.dataset.total : "?";
   info.style.display = "flex";
-  info.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-    題庫共 <strong>${total}</strong> 題，隨機抽選作答
-  `;
+  info.textContent = t('cat.total.prefix') + ' ' + total + ' ' + t('cat.total.suffix');
   btn.disabled = false;
 }
 
-let selectedMode = CONFIG.DEFAULT_MODE;
+var selectedMode = CONFIG.DEFAULT_MODE;
 
 function onModeChange(mode) {
   selectedMode = mode;
-  document.querySelectorAll(".mode-radio").forEach(el => {
+  document.querySelectorAll(".mode-radio").forEach(function(el) {
     el.classList.toggle("active", el.querySelector("input").value === mode);
   });
 }
 
 // ===== 存檔恢復提示 =====
 function renderResumeBanner() {
-  const saved = loadProgress();
-  const banner = document.getElementById("resume-banner");
+  var saved = loadProgress();
+  var banner = document.getElementById("resume-banner");
   if (!saved) {
     if (banner) banner.remove();
     return;
   }
 
-  const modeInfo = CONFIG.MODES[saved.examMode] || CONFIG.MODES.normal;
-  const answered = saved.answers.filter(a => a.chosen !== null || a.hinted).length;
-  const timeAgo = new Date(saved.savedAt).toLocaleString("zh-TW");
+  var modeInfo = CONFIG.MODES[saved.examMode] || CONFIG.MODES.normal;
+  var answered = saved.answers.filter(function(a) { return a.chosen !== null || a.hinted; }).length;
+  var timeAgo = new Date(saved.savedAt).toLocaleString(getLang() === 'zh-TW' ? 'zh-TW' : undefined);
 
-  let el = banner || document.createElement("div");
+  var el = banner || document.createElement("div");
   el.id = "resume-banner";
   el.className = "resume-banner";
-  el.innerHTML = `
-    <div class="resume-info">
-      <strong>📂 發現未完成的測驗</strong>
-      <span>${escapeHtml(saved.catName)} — ${modeInfo.label}，已答 ${answered}/${saved.questions.length} 題</span>
-      <span class="resume-time">存檔於 ${timeAgo}</span>
-    </div>
-    <div class="resume-actions">
-      <button class="btn btn-primary btn-sm" onclick="resumeExam()">繼續作答</button>
-      <button class="btn btn-outline btn-sm" onclick="discardSave()">捨棄</button>
-    </div>
-  `;
+  el.textContent = '';
+
+  var infoDiv = document.createElement('div');
+  infoDiv.className = 'resume-info';
+  var strong = document.createElement('strong');
+  strong.textContent = t('resume.title');
+  infoDiv.appendChild(strong);
+  var span1 = document.createElement('span');
+  span1.textContent = escapeHtml(saved.catName) + ' — ' + t('mode.' + saved.examMode) + ', ' + t('exam.answered') + ' ' + answered + '/' + saved.questions.length + ' ' + t('mode.questions');
+  infoDiv.appendChild(span1);
+  el.appendChild(infoDiv);
+
+  var actDiv = document.createElement('div');
+  actDiv.className = 'resume-actions';
+  var btnResume = document.createElement('button');
+  btnResume.className = 'btn btn-primary btn-sm';
+  btnResume.onclick = resumeExam;
+  btnResume.textContent = t('resume.btn');
+  actDiv.appendChild(btnResume);
+  var btnDiscard = document.createElement('button');
+  btnDiscard.className = 'btn btn-outline btn-sm';
+  btnDiscard.onclick = discardSave;
+  btnDiscard.textContent = t('resume.discard');
+  actDiv.appendChild(btnDiscard);
+  el.appendChild(actDiv);
+
   if (!banner) {
-    const card = document.querySelector(".selector-card");
+    var card = document.querySelector(".selector-card");
     card.parentNode.insertBefore(el, card);
   }
 }
 
 function resumeExam() {
-  const saved = loadProgress();
+  var saved = loadProgress();
   if (!saved) return;
-  location.href = `exam.html?cat=${encodeURIComponent(saved.catId)}&examMode=${saved.examMode}`;
+  location.href = 'exam.html?cat=' + encodeURIComponent(saved.catId) + '&examMode=' + saved.examMode;
 }
 
 function discardSave() {
   clearProgress();
-  document.getElementById("resume-banner")?.remove();
-  showToast("已捨棄存檔");
+  var el = document.getElementById("resume-banner");
+  if (el) el.remove();
+  showToast(t('resume.discarded'));
 }
 
 // ===== 首頁歷史成績 =====
 function renderHomeHistory() {
-  const section = document.getElementById("history-section");
+  var section = document.getElementById("history-section");
   if (!section) return;
-  const history = getExamHistory();
-  if (history.length === 0) { section.innerHTML = ""; return; }
+  var history = getExamHistory();
+  if (history.length === 0) { section.textContent = ""; return; }
 
-  section.innerHTML = `
-    <div class="history-card home-history">
-      <h2>📊 最近練習紀錄</h2>
-      <div class="history-list">
-        ${history.slice(0, 5).map(h => `
-          <div class="history-item">
-            <div class="hi-cat">${escapeHtml(h.catName)}${h.mode === '急速模式' || h.mode === 'speed' ? ' <span class="hi-badge speed">⚡</span>' : ''}</div>
-            <div class="hi-score ${h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail'}">${h.score} 分</div>
-            <div class="hi-detail">答對 ${h.correct}/${h.total}</div>
-            <div class="hi-date">${new Date(h.date).toLocaleDateString("zh-TW")}</div>
-          </div>`).join("")}
-      </div>
-    </div>`;
+  section.textContent = '';
+  var card = document.createElement('div');
+  card.className = 'history-card home-history';
+  var h2 = document.createElement('h2');
+  h2.textContent = t('history.title');
+  card.appendChild(h2);
+
+  var list = document.createElement('div');
+  list.className = 'history-list';
+  history.slice(0, 5).forEach(function(h) {
+    var item = document.createElement('div');
+    item.className = 'history-item';
+
+    var catDiv = document.createElement('div');
+    catDiv.className = 'hi-cat';
+    catDiv.textContent = h.catName;
+    item.appendChild(catDiv);
+
+    var scoreDiv = document.createElement('div');
+    scoreDiv.className = 'hi-score ' + (h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail');
+    scoreDiv.textContent = h.score + ' ' + t('result.score.unit');
+    item.appendChild(scoreDiv);
+
+    var detailDiv = document.createElement('div');
+    detailDiv.className = 'hi-detail';
+    detailDiv.textContent = t('result.correct') + ' ' + h.correct + '/' + h.total;
+    item.appendChild(detailDiv);
+
+    var dateDiv = document.createElement('div');
+    dateDiv.className = 'hi-date';
+    dateDiv.textContent = new Date(h.date).toLocaleDateString(getLang() === 'zh-TW' ? 'zh-TW' : undefined);
+    item.appendChild(dateDiv);
+
+    list.appendChild(item);
+  });
+  card.appendChild(list);
+  section.appendChild(card);
 }
 
 // ===== 測驗前須知 =====
-let _pendingCatId = null;
+var _pendingCatId = null;
 
 function requestStartExam() {
-  const sel = document.getElementById("cat-select");
-  if (!sel?.value) return;
+  var sel = document.getElementById("cat-select");
+  if (!sel || !sel.value) return;
   _pendingCatId = sel.value;
   document.getElementById("preexam-modal").classList.add("open");
 }
 
 function confirmStartExam() {
   if (!_pendingCatId) return;
-  // 如果有存檔且是不同的測驗，先清除
-  const saved = loadProgress();
+  var saved = loadProgress();
   if (saved && (saved.catId !== _pendingCatId || saved.examMode !== selectedMode)) {
     clearProgress();
   }
-  window.location.href = `exam.html?cat=${encodeURIComponent(_pendingCatId)}&examMode=${selectedMode}`;
+  window.location.href = 'exam.html?cat=' + encodeURIComponent(_pendingCatId) + '&examMode=' + selectedMode;
 }
 
 function closePreExam() {
@@ -225,17 +373,29 @@ function closeNotice() {
 }
 
 if (sessionStorage.getItem("notice_seen")) {
-  document.addEventListener("DOMContentLoaded", () => {
-    const m = document.getElementById("notice-modal");
+  document.addEventListener("DOMContentLoaded", function() {
+    var m = document.getElementById("notice-modal");
     if (m) m.classList.remove("open");
   });
 }
 
+// ===== 語言切換事件 =====
+window.addEventListener('langchange', function() {
+  // 語言切換時重新渲染
+  var filtered = filterCategoriesByLang(_allCategories);
+  renderDropdown(filtered);
+  applyI18n();
+});
+
 // ===== 初始化 =====
 loadCategories()
   .then(renderDropdown)
-  .catch((err) => {
-    console.warn("載入題庫失敗：", err);
-    document.getElementById("select-wrap").innerHTML = `
-      <p class="error-msg">載入題庫失敗：${escapeHtml(err.message)}<br>請確認網路連線正常或稍後再試。</p>`;
+  .catch(function(err) {
+    console.warn("Load failed:", err);
+    var wrap = document.getElementById("select-wrap");
+    wrap.textContent = '';
+    var p = document.createElement('p');
+    p.className = 'error-msg';
+    p.textContent = t('error.load') + err.message + ' ' + t('error.network');
+    wrap.appendChild(p);
   });
