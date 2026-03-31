@@ -35,7 +35,7 @@ function getSpreadsheet() {
     try {
         var ss = SpreadsheetApp.getActiveSpreadsheet();
         if (ss) return ss;
-    } catch(e) {}
+    } catch (e) { }
     return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
@@ -661,7 +661,7 @@ function getQuestions(catId, count) {
 
         // 快取時去掉圖片（大幅縮小），加速後續請求
         try {
-            var lite = all.map(function(q) {
+            var lite = all.map(function (q) {
                 if (q.image || q.optionImages) {
                     var copy = {};
                     for (var k in q) {
@@ -688,12 +688,12 @@ function getQuestions(catId, count) {
     }
 
     // 依 subject 欄位做 80/20 配比抽題（操作 80%、共同 20%）
-    var hasSubject = all.some(function(q) { return q.subject; });
+    var hasSubject = all.some(function (q) { return q.subject; });
     var pool;
 
     if (hasSubject) {
-        var opQs = all.filter(function(q) { return q.subject === "操作"; });
-        var cmQs = all.filter(function(q) { return q.subject === "共同"; });
+        var opQs = all.filter(function (q) { return q.subject === "操作"; });
+        var cmQs = all.filter(function (q) { return q.subject === "共同"; });
         var opCount = Math.round(count * 0.8);
         var cmCount = count - opCount;
         var picked = shuffle(opQs).slice(0, Math.min(opCount, opQs.length))
@@ -708,11 +708,11 @@ function getQuestions(catId, count) {
     // 如果用了快取（無圖片），檢查結果是否有需要補圖的題目
     if (fromCache) {
         // 先檢查結果中是否有引用圖片的題目，避免不必要的 Drive 讀取
-        var needsImages = result.some(function(q) {
+        var needsImages = result.some(function (q) {
             var txt = q.q || '';
             return txt.indexOf('圖') >= 0 || txt.indexOf('標章') >= 0 ||
-                   txt.indexOf('image') >= 0 || txt.indexOf('hình') >= 0 ||
-                   txt.indexOf('gambar') >= 0 || txt.indexOf('รูป') >= 0;
+                txt.indexOf('image') >= 0 || txt.indexOf('hình') >= 0 ||
+                txt.indexOf('gambar') >= 0 || txt.indexOf('รูป') >= 0;
         });
         if (needsImages) {
             try {
@@ -720,11 +720,11 @@ function getQuestions(catId, count) {
                 var file2 = getFileByName(fname2);
                 var fullData = JSON.parse(file2.getBlob().getDataAsString("UTF-8"));
                 var imgMap = {};
-                fullData.questions.forEach(function(q) {
+                fullData.questions.forEach(function (q) {
                     if (q.image || q.optionImages) imgMap[q.id] = q;
                 });
                 if (Object.keys(imgMap).length > 0) {
-                    result = result.map(function(q) {
+                    result = result.map(function (q) {
                         if (imgMap[q.id]) {
                             if (imgMap[q.id].image) q.image = imgMap[q.id].image;
                             if (imgMap[q.id].optionImages) q.optionImages = imgMap[q.id].optionImages;
@@ -732,7 +732,7 @@ function getQuestions(catId, count) {
                         return q;
                     });
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
     }
 
@@ -806,7 +806,7 @@ function logExamResult(body) {
         headerRange.setFontWeight("bold");
     }
 
-    const MODE_LABELS = { normal: "標準模式", speed: "急速模式" };
+    const MODE_LABELS = { normal: "標準模式", speed: "急速模式", mock: "模擬考" };
 
     sheet.appendRow([
         toTaiwanTime(body.timestamp),
@@ -843,13 +843,13 @@ function logAnswerDetails(body) {
     var lastRow = sheet.getLastRow();
     var existingData = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 5).getValues() : [];
     var rowMap = {};  // "catId__qId" -> row number (1-based)
-    existingData.forEach(function(row, i) {
+    existingData.forEach(function (row, i) {
         var key = String(row[0]) + "__" + String(row[1]);
         rowMap[key] = i + 2;  // +2 因為 header 在 row 1
     });
 
     // 批次更新
-    answers.forEach(function(a) {
+    answers.forEach(function (a) {
         var key = catId + "__" + String(a.qId);
         var existingRow = rowMap[key];
 
