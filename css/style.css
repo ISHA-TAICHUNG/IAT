@@ -137,11 +137,12 @@
   background: none;
   border: 1px solid var(--gray-300);
   border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 0.85rem;
+  padding: 4px 8px;
+  font-size: 0.75rem;
   cursor: pointer;
   color: var(--gray-600);
-  margin-left: 8px;
+  margin-left: 6px;
+  white-space: nowrap;
 }
 .fontsize-btn:hover { background: var(--gray-100); }
 [data-theme="dark"] .fontsize-btn { border-color: var(--gray-600); color: var(--gray-400); }

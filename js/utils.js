@@ -143,7 +143,7 @@ function toggleTheme() {
 // ===== 字體大小 =====
 const FONTSIZE_KEY = "fontsize_pref";
 const FONTSIZES = ["normal", "large", "xlarge"];
-const FONTSIZE_LABELS = { normal: "A", large: "A⁺", xlarge: "A⁺⁺" };
+const FONTSIZE_LABELS = { normal: "字小", large: "字中", xlarge: "字大" };
 
 function getFontSizePref() {
     return localStorage.getItem(FONTSIZE_KEY) || "normal";
