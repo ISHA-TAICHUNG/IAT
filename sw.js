@@ -13,6 +13,9 @@ const STATIC_ASSETS = [
     "./js/app.js?v=20260330c",
     "./js/exam.js?v=20260330c",
     "./js/result.js?v=20260330c",
+    "./query.html",
+    "./css/query.css?v=20260330c",
+    "./js/query.js?v=20260330c",
 ];
 
 // 安裝：預快取靜態資源

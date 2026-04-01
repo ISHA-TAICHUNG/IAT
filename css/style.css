@@ -169,6 +169,13 @@
   background: rgba(26, 86, 219, 0.15);
 }
 
+/* ===== 導覽 Tab ===== */
+.nav-tabs { display: flex; gap: 0; background: var(--card-bg, #fff); border-bottom: 2px solid var(--gray-200, #e5e7eb); padding: 0 16px; }
+.nav-tab { padding: 12px 20px; font-size: 0.9rem; font-weight: 500; color: var(--gray-500, #6b7280); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.nav-tab:hover { color: var(--gray-900, #111827); }
+.nav-tab.active { color: var(--primary, #e85d04); border-bottom-color: var(--primary, #e85d04); font-weight: 700; }
+@media (max-width: 600px) { .nav-tab { padding: 10px 14px; font-size: 0.82rem; } }
+
 /* ===== CSS 變數 ===== */
 :root {
   --primary: #e85d04;

@@ -1,0 +1,138 @@
+/* ===== 查詢頁專用樣式 ===== */
+
+/* 導覽 Tab */
+.nav-tabs { display: flex; gap: 0; background: var(--card-bg); border-bottom: 2px solid var(--gray-200); padding: 0 16px; }
+.nav-tab { padding: 12px 20px; font-size: 0.9rem; font-weight: 500; color: var(--gray-500); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.nav-tab:hover { color: var(--gray-900); }
+.nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+
+/* 查詢卡片 */
+.query-card { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; margin-bottom: 20px; }
+.query-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; color: var(--gray-900); }
+.query-desc { font-size: 0.88rem; color: var(--gray-500); margin-bottom: 20px; }
+.query-input { width: 100%; padding: 14px 18px; border: 2px solid var(--gray-200); border-radius: 12px; font-size: 1.05rem; font-family: inherit; background: var(--card-bg); color: var(--gray-900); transition: all 0.2s; box-sizing: border-box; }
+.query-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(232,93,4,0.15); }
+.query-input::placeholder { color: var(--gray-400); }
+.query-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-size: 1rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+.query-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.query-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.query-label { display: block; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; font-size: 0.95rem; }
+.query-help { font-size: 0.82rem; color: var(--gray-500); margin-top: 6px; }
+.query-error { font-size: 0.82rem; color: var(--danger); margin-top: 6px; display: none; gap: 4px; align-items: center; }
+.query-error.show { display: flex; }
+
+/* 結果卡片 */
+.result-item { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 20px; animation: qFadeUp 0.4s ease; }
+.result-header { padding: 20px 24px; border-bottom: 1px solid var(--gray-200); }
+.result-header h3 { font-size: 1.2rem; font-weight: 700; color: var(--gray-900); margin: 0; }
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; }
+.result-field { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: var(--gray-50); }
+.result-field-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; background: var(--gray-100); }
+.result-field-label { font-size: 0.78rem; color: var(--gray-500); font-weight: 500; }
+.result-field-value { font-size: 1rem; font-weight: 700; color: var(--gray-900); }
+.result-field.highlight { border: 2px solid var(--primary); background: var(--primary-light); }
+.result-field.highlight .result-field-label { color: var(--primary); font-weight: 600; }
+.result-field.highlight .result-field-value { color: var(--primary-dark); }
+.result-field.highlight .result-field-icon { background: var(--primary); color: #fff; }
+
+/* 資訊區塊 */
+.info-section { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 20px; }
+.info-section h2 { font-size: 1.15rem; font-weight: 700; color: var(--gray-900); margin: 0 0 16px; padding-bottom: 12px; border-bottom: 2px solid var(--gray-100); }
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.contact-card { padding: 16px; border-radius: 10px; border: 1px solid var(--gray-200); }
+.contact-card h4 { font-weight: 700; margin: 0 0 4px; color: var(--gray-900); }
+.contact-card a { font-size: 1.2rem; font-weight: 700; color: var(--primary); text-decoration: none; }
+.contact-card a:hover { text-decoration: underline; }
+.contact-card .addr { font-size: 0.82rem; color: var(--gray-500); margin-top: 4px; }
+.contact-link { display: block; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; }
+.contact-link:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.map-link { font-size: 0.78rem; color: var(--primary); margin-top: 6px; }
+
+/* 提示框 */
+.tip-box { padding: 14px 16px; border-radius: 10px; display: flex; gap: 10px; align-items: flex-start; font-size: 0.88rem; line-height: 1.6; }
+.tip-warn { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; }
+.tip-info { background: var(--accent-light, #e8f0fe); border: 1px solid #93c5fd; color: #1e40af; }
+
+/* 注意事項 */
+.notices-toggle { width: 100%; padding: 16px 24px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-family: inherit; font-weight: 700; font-size: 1rem; color: var(--gray-900); }
+.notices-toggle:hover { background: var(--gray-50); }
+.notices-arrow { transition: transform 0.2s; }
+.notices-content { padding: 0 24px 24px; font-size: 0.85rem; line-height: 1.8; color: var(--gray-700); }
+.notices-content.hidden { display: none; }
+.notices-content p { margin: 8px 0; }
+.notices-danger { background: var(--danger-light); border: 1px solid #fca5a5; border-radius: 10px; padding: 14px; margin: 10px 0; color: #991b1b; font-size: 0.82rem; }
+
+/* 無結果 */
+.no-result { text-align: center; padding: 40px 24px; }
+.no-result-icon { font-size: 3rem; margin-bottom: 16px; }
+.no-result h3 { font-size: 1.2rem; font-weight: 700; color: var(--gray-900); margin: 0 0 8px; }
+.no-result p { color: var(--gray-500); font-size: 0.9rem; margin: 4px 0; }
+
+/* 搜尋歷史 tag */
+.history-tag { padding: 6px 14px; border-radius: 20px; background: var(--gray-100); color: var(--gray-700); font-size: 0.82rem; border: none; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+.history-tag:hover { background: var(--gray-200); }
+
+/* 深色模式適配 */
+[data-theme="dark"] .tip-warn { background: rgba(254,243,199,0.1); border-color: rgba(253,230,138,0.3); color: #fcd34d; }
+[data-theme="dark"] .tip-info { background: rgba(232,240,254,0.1); border-color: rgba(147,197,253,0.3); color: #93c5fd; }
+[data-theme="dark"] .contact-card { border-color: var(--gray-600); }
+[data-theme="dark"] .result-field { background: rgba(255,255,255,0.05); }
+[data-theme="dark"] .result-field.highlight { background: rgba(232,93,4,0.1); }
+[data-theme="dark"] .notices-danger { background: rgba(239,68,68,0.1); border-color: rgba(252,165,165,0.3); color: #fca5a5; }
+
+/* RWD */
+@media (max-width: 600px) {
+  .nav-tab { padding: 10px 14px; font-size: 0.82rem; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .result-grid { grid-template-columns: 1fr; }
+  .query-card { padding: 20px 16px; }
+  .info-section { padding: 18px 16px; }
+}
+
+@keyframes qFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== 手機端 + WebView/LIFF 優化 ===== */
+
+/* 小螢幕（手機直式） */
+@media (max-width: 400px) {
+  .query-card { padding: 16px 14px; }
+  .query-input { padding: 12px 14px; font-size: 1rem; }
+  .query-btn { padding: 12px; font-size: 0.95rem; }
+  .result-grid { gap: 10px; padding: 16px; }
+  .result-field { padding: 10px; gap: 10px; }
+  .result-field-icon { width: 34px; height: 34px; font-size: 0.95rem; }
+  .result-field-value { font-size: 0.9rem; }
+  .result-header { padding: 14px 16px; }
+  .info-section { padding: 14px 12px; }
+  .info-section h2 { font-size: 1rem; }
+  .contact-card { padding: 12px; }
+  .contact-card a { font-size: 1rem; }
+  .tip-box { padding: 10px 12px; font-size: 0.82rem; }
+}
+
+/* WebView safe area（iPhone 瀏海/底部安全區） */
+@supports (padding: env(safe-area-inset-top)) {
+  .nav-tabs { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .site-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+}
+
+/* 觸控優化：按鈕最小 44px（Apple HIG 建議） */
+.query-btn, .history-tag, .notices-toggle, .nav-tab {
+  min-height: 44px;
+}
+
+/* 防止 WebView 中 input zoom（iOS Safari 小於 16px 會自動放大） */
+@media (max-width: 768px) {
+  .query-input { font-size: max(16px, 1rem); }
+}
+
+/* LINE LIFF / 外部框架 WebView 底部可能有 toolbar */
+@media (max-height: 600px) {
+  .query-card { margin-top: 10px !important; }
+  .info-section { padding: 16px 14px; }
+}
+
+/* 減少動畫（低效能裝置） */
+@media (prefers-reduced-motion: reduce) {
+  .result-item { animation: none; }
+}

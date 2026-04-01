@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>測驗日期查詢 — 管理職類測驗線上練習</title>
+  <meta name="description" content="查詢管理職類電腦化測驗日期、時間、座號及相關資訊" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260330c" />
+  <link rel="stylesheet" href="css/query.css?v=20260330c" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="header-logo-wrap">
+        <img src="images/logo-header.png" alt="中華民國工業安全衛生協會" class="header-logo-img" />
+      </div>
+      <div>
+        <h1>管理職類測驗 線上服務</h1>
+        <p class="header-sub">職業安全衛生 — 台中職業訓練中心</p>
+      </div>
+      <button class="fontsize-btn" onclick="cycleFontSize()" title="字體大小">A</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+    </div>
+  </header>
+
+  <!-- 導覽 Tab -->
+  <nav class="nav-tabs">
+    <a href="index.html" class="nav-tab">📝 測驗練習</a>
+    <a href="query.html" class="nav-tab active">🔍 測驗日期查詢</a>
+  </nav>
+
+  <main class="container">
+
+    <!-- 查詢區 -->
+    <div class="query-card" style="margin-top:20px">
+      <h2 class="query-title">📋 管理職類測驗日期查詢</h2>
+      <p class="query-desc">輸入完整姓名，查詢測驗日期、時間、座號及教室</p>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--warning-light,#feecdc);border:1px solid #fde68a;border-radius:8px;font-size:0.78rem;color:#92400e;margin-bottom:16px">
+        <span>📍</span> 本查詢功能僅限台中職業訓練中心使用
+      </div>
+      <form id="queryForm">
+        <label class="query-label" for="qName">查詢姓名 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="qName" class="query-input" placeholder="請輸入完整姓名，例如：王小明" required minlength="2" maxlength="20" autocomplete="name" />
+        <div class="query-help">請輸入 2-20 字元的完整中文姓名</div>
+        <div class="query-error" id="qError"><span>⚠</span> <span id="qErrorText"></span></div>
+        <button type="submit" class="query-btn" id="qBtn" style="margin-top:16px">
+          <span id="qBtnText">🔍 查詢測驗資訊</span>
+        </button>
+      </form>
+
+      <!-- 搜尋歷史 -->
+      <div id="qHistory" style="margin-top:16px;display:none">
+        <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:8px">最近查詢</div>
+        <div id="qHistoryTags" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- 結果區 -->
+    <div id="qResults"></div>
+
+    <!-- 聯絡資訊 -->
+    <div class="info-section">
+      <h2>📞 聯絡資訊及服務時間</h2>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h4>🎓 忠明教室</h4>
+          <a href="tel:04-22608999">04-2260-8999</a>
+          <div class="addr">臺中市南區忠明南路758號3樓</div>
+        </div>
+        <div class="contact-card">
+          <h4>🏢 職安衛龍井試場</h4>
+          <a href="tel:04-26336999">04-2633-6999</a>
+          <div class="addr">臺中市龍井區中社五街12號</div>
+        </div>
+      </div>
+      <div style="font-size:0.88rem;color:var(--gray-500);margin:12px 0">
+        服務時間：週一至週五 09:00-12:00、13:30-16:30（例假日休息）
+      </div>
+      <div class="tip-box tip-info">
+        💡 如查詢不到資料，可能測驗資訊尚未發布（通常開考前 10 個工作天），請直接致電確認。
+      </div>
+    </div>
+
+    <!-- 測驗地點 -->
+    <div class="info-section">
+      <h2>📍 測驗地點</h2>
+      <div class="contact-grid">
+        <a href="https://maps.app.goo.gl/nVrARbyT7Bjvi6TY7" target="_blank" rel="noopener" class="contact-card contact-link">
+          <h4>🏢 職安衛龍井試場</h4>
+          <div class="addr">臺中市龍井區中社五街12號</div>
+          <div class="map-link">🔗 查看 Google 地圖</div>
+        </a>
+        <a href="https://maps.app.goo.gl/kev43J4jJjkAryXG7" target="_blank" rel="noopener" class="contact-card contact-link">
+          <h4>🎓 忠明教室</h4>
+          <div class="addr">臺中市南區忠明南路758號3樓</div>
+          <div class="map-link">🔗 查看 Google 地圖</div>
+        </a>
+      </div>
+      <div class="tip-box tip-warn" style="margin-top:12px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 35 分鐘抵達報到。</div>
+    </div>
+
+    <!-- 注意事項 -->
+    <div class="info-section" style="padding:0;overflow:hidden">
+      <button class="notices-toggle" id="noticesBtn" aria-expanded="false" aria-controls="noticesBody">
+        <span>📋 測驗注意事項</span>
+        <span id="noticesArrow" class="notices-arrow">▼</span>
+      </button>
+      <div class="notices-content hidden" id="noticesBody">
+        <p><strong>一、</strong>本注意事項依「職業安全衛生教育訓練管理職類結訓測驗試場認可及管理作業要點」第二十二點規定訂定之。</p>
+        <p><strong>二、</strong>應試者於測驗時，應遵守本注意事項之規定。</p>
+        <div class="tip-box tip-warn" style="margin:10px 0"><strong>三、</strong>應試者應於測驗前 30 分鐘辦理報到，測驗開始後 15 分鐘尚未入場者不得入場，開始後 15 分鐘內不得出場。</div>
+        <p><strong>四、</strong>測驗當日應攜帶身分證件及准考證，均未攜帶者不得應試。</p>
+        <p><strong>五、</strong>就座後應將證件置於桌面左前角，書籍文件放置指定場所。</p>
+        <div class="notices-danger"><strong>六、</strong>冒名頂替、持偽造證件、互換座位、傳遞文稿、夾帶資料、不繳試題、使用禁止工具、窺視答案、書寫相關文字、擾亂秩序 — 以上情事成績以零分計算。</div>
+        <p><strong>七、</strong>手機或電子設備隨身攜帶者扣 20 分。</p>
+        <p><strong>八、</strong>時間結束後仍作答、誤坐座位、自備稿紙、擅自進場、場地吸菸者扣 10 分。</p>
+        <p><strong>九～十二、</strong>其他未盡事宜依試場規則辦理。</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <img src="images/logo.png" alt="ISHA" class="footer-logo-img" />
+    <div class="footer-org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+    <div>管理職類暨即測即評線上服務系統</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.js?v=20260330c"></script>
+  <script src="js/utils.js?v=20260330c"></script>
+  <script src="js/query.js?v=20260330c"></script>
+</body>
+
+</html>

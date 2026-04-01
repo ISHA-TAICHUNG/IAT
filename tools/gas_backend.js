@@ -635,6 +635,13 @@ function getCategories() {
     const file = getFileByName("categories.json");
     const data = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
 
+    // 名稱修正（確保顯示最新名稱）
+    data.forEach(function(c) {
+        if (c.id === "一壓_本籍" && c.name.indexOf("一般") >= 0) {
+            c.name = "第一種壓力容器操作人員（本籍）";
+        }
+    });
+
     CACHE.put("categories", JSON.stringify(data), CACHE_TTL);
     return data;
 }
