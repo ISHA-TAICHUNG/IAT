@@ -274,7 +274,7 @@ function renderQuestion() {
             ? `<button class="btn btn-primary" onclick="nextQ()">
                ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
              </button>`
-            : isMulti && hasSelection
+            : (!isMock && isMulti && hasSelection)
             ? `<button class="btn btn-primary" onclick="submitMulti()">送出答案</button>
                <button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`
             : `<button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`}
@@ -364,7 +364,14 @@ function handleKey(e) {
     if (document.getElementById("end-confirm-modal")?.classList.contains("open")) return;
     if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
     if (e.key === "ArrowRight" || e.key === "Enter") {
-        if (answers[current].chosen !== null || answers[current].hinted) nextQ();
+        // 複選題必須 submitted 或 hinted 才能前進，避免跳過判分
+        const q = questions[current];
+        const ans = answers[current];
+        const isMulti = !!q.multi || Array.isArray(q.answer);
+        const canAdvance = isMulti
+            ? (ans.submitted === true || ans.hinted)
+            : (ans.chosen !== null || ans.hinted);
+        if (canAdvance) nextQ();
     }
     if (e.key === "ArrowLeft") prevQ();
 }

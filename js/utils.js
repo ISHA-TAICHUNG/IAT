@@ -85,7 +85,14 @@ function shuffleOptions(question) {
 
     // 重建 options、answer、optionImages 映射
     question.options = combined.map(c => c.opt);
-    question.answer = combined.findIndex(c => c.origIdx === question.answer);
+    // 支援複選題（answer 為陣列）與單選題（answer 為數字）
+    if (Array.isArray(question.answer)) {
+        question.answer = question.answer
+            .map(origIdx => combined.findIndex(c => c.origIdx === origIdx))
+            .sort((a, b) => a - b);
+    } else {
+        question.answer = combined.findIndex(c => c.origIdx === question.answer);
+    }
     if (origOptImages) {
         question.optionImages = combined.map(c => origOptImages[c.origIdx]);
     }
