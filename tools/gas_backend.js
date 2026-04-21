@@ -289,13 +289,27 @@ function applyCorrections() {
                             break;
                         case "答案(ABCD)": {
                             const answerMap = { "A": 0, "B": 1, "C": 2, "D": 3 };
-                            const ansIdx = answerMap[correction.newValue.toUpperCase()];
-                            if (ansIdx === undefined) {
-                                sheet.getRange(correction.row, 5).setValue("❌ 答案請填 A/B/C/D");
-                                failCount++;
-                                continue;
+                            const raw = correction.newValue.toUpperCase().replace(/[,，\s]/g, "");
+                            // 支援複選（多字母如 "AC" 或 "ABD"）
+                            if (Array.isArray(q.answer) || raw.length > 1) {
+                                const letters = raw.split("");
+                                const indices = letters.map(L => answerMap[L]);
+                                if (indices.some(v => v === undefined)) {
+                                    sheet.getRange(correction.row, 5).setValue("❌ 答案請填 A/B/C/D（複選可填 AC、BCD 等）");
+                                    failCount++;
+                                    continue;
+                                }
+                                q.answer = indices.sort((a, b) => a - b);
+                                if (q.answer.length > 1) q.multi = true;
+                            } else {
+                                const ansIdx = answerMap[raw];
+                                if (ansIdx === undefined) {
+                                    sheet.getRange(correction.row, 5).setValue("❌ 答案請填 A/B/C/D");
+                                    failCount++;
+                                    continue;
+                                }
+                                q.answer = ansIdx;
                             }
-                            q.answer = ansIdx;
                             break;
                         }
                         case "刪除此題":
@@ -706,6 +720,13 @@ function getQuestions(catId, count) {
         var cmCount = count - opCount;
         var picked = shuffle(opQs).slice(0, Math.min(opCount, opQs.length))
             .concat(shuffle(cmQs).slice(0, Math.min(cmCount, cmQs.length)));
+        // Fallback：若某邊題數不足導致總數小於 count，從剩餘題目補滿
+        if (picked.length < count) {
+            var pickedIds = {};
+            picked.forEach(function (q) { pickedIds[q.id] = true; });
+            var remaining = shuffle(all.filter(function (q) { return !pickedIds[q.id]; }));
+            picked = picked.concat(remaining.slice(0, count - picked.length));
+        }
         pool = shuffle(picked);
     } else {
         pool = shuffle(all);

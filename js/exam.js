@@ -87,7 +87,8 @@ async function init() {
             const numQ = modeConfig.questions;
             const hasSubject = data.some(function(q) { return q.subject; });
             if (hasSubject && numQ < data.length) {
-                const opQs = shuffleArray(data.filter(function(q) { return q.subject === '操作'; }));
+                // 「操作」(舊) 和「專業」(新) 都視為主科
+                const opQs = shuffleArray(data.filter(function(q) { return q.subject === '操作' || q.subject === '專業'; }));
                 const cmQs = shuffleArray(data.filter(function(q) { return q.subject === '共同'; }));
                 const opN = Math.round(numQ * 0.8);
                 const cmN = numQ - opN;
@@ -288,7 +289,7 @@ function submitMulti() {
     const ans = answers[current];
     ans.submitted = true;
     renderQuestion();
-    saveProgress();
+    autoSave();
     updateHeader();
     renderNav();
 }
@@ -378,7 +379,13 @@ function handleKey(e) {
 
 function updateHeader() {
     document.getElementById("q-current").textContent = current + 1;
-    const answered = answers.filter(a => a.chosen !== null || a.hinted).length;
+    // 複選題需 submitted；單選題只要 chosen 或 hinted 即算已答
+    const answered = answers.filter((a, i) => {
+        if (a.hinted) return true;
+        const q = questions[i];
+        const isMulti = !!q.multi || Array.isArray(q.answer);
+        return isMulti ? (a.submitted === true) : (a.chosen !== null);
+    }).length;
     document.getElementById("answered-count").textContent = answered;
     document.getElementById("progress-bar").style.width =
         ((current + 1) / questions.length * 100) + "%";
