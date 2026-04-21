@@ -8,7 +8,7 @@
   <meta name="description" content="查詢即測即評技能檢定測驗日期、學科術科時間、考場" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260421c" />
+  <link rel="stylesheet" href="css/style.css?v=20260421d" />
   <link rel="stylesheet" href="css/query.css?v=20260421b" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
@@ -126,7 +126,7 @@
           <div class="map-link">🔗 查看 Google 地圖</div>
         </a>
       </div>
-      <div class="tip-box tip-warn" style="margin-top:12px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 30 分鐘抵達報到。</div>
+      <div class="tip-box tip-warn" style="margin-top:12px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 20 分鐘抵達準備報到。</div>
     </div>
 
     <!-- 注意事項 -->
@@ -136,7 +136,12 @@
         <span id="eqNoticesArrow" class="notices-arrow">▼</span>
       </button>
       <div class="notices-content hidden" id="eqNoticesBody">
-        <p><strong>一、報到：</strong>應試者應於測驗前 30 分鐘辦理報到，測驗開始後 15 分鐘尚未入場者不得入場。</p>
+        <p><strong>一、報到時間：</strong></p>
+        <ul style="margin:4px 0 10px 20px;line-height:1.8">
+          <li>上午場：早上 <strong>7:30 ~ 7:40</strong> 辦理報到</li>
+          <li>下午場：中午 <strong>12:50</strong> 辦理報到</li>
+          <li>測驗開始後 15 分鐘尚未入場者不得入場</li>
+        </ul>
         <p><strong>二、攜帶物品：</strong>測驗當日應攜帶身分證件及准考證，均未攜帶者不得應試。</p>
         <p><strong>三、測驗流程：</strong>依免試別分為三種測驗方式（詳見上方「測驗方式」說明）。</p>
         <p><strong>四、學科測驗：</strong>於龍井教室 2 樓即測即評學科電腦教室進行。</p>
@@ -145,6 +150,22 @@
           <strong>六、禁止事項：</strong>冒名頂替、攜帶手機電子設備、夾帶資料等情事，成績以零分計算或扣分。
         </div>
         <p><strong>七、特殊情形：</strong>若測驗當日遇天災或其他不可抗力因素，依主管機關公告辦理。</p>
+      </div>
+    </div>
+
+    <!-- 查詢提示 Modal -->
+    <div class="modal-backdrop" id="eqConfirmModal" role="dialog" aria-modal="true" aria-labelledby="eqConfirmTitle">
+      <div class="modal" style="max-width:420px">
+        <h2 id="eqConfirmTitle" style="margin-top:0">⚠️ 查詢前請注意</h2>
+        <div class="tip-box tip-warn" style="margin:12px 0">
+          <strong>正確時間仍以紙本准考證為主</strong>
+        </div>
+        <p style="margin:12px 0;color:var(--gray-700);font-size:0.92rem;line-height:1.6">
+          本查詢提供的測驗日期、時間、場次僅供參考，若與紙本准考證有出入，請以收到的紙本准考證為準。
+        </p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+          <button type="button" class="btn btn-primary" id="eqConfirmOk">我知道了，繼續查詢</button>
+        </div>
       </div>
     </div>
 
@@ -160,7 +181,7 @@
 
   <script src="js/config.js?v=20260421b"></script>
   <script src="js/utils.js?v=20260421b"></script>
-  <script src="js/exam-query.js?v=20260421b"></script>
+  <script src="js/exam-query.js?v=20260421c"></script>
 </body>
 
 </html>

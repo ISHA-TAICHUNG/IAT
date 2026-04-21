@@ -65,7 +65,7 @@
     var idno = idnoInput.value.trim().toUpperCase();
     if (!validate(idno)) return;
     hideError();
-    doSearch(idno);
+    showConfirmBeforeQuery(function () { doSearch(idno); });
   });
 
   historyTags.addEventListener('click', function (e) {
@@ -81,6 +81,28 @@
     noticesBtn.setAttribute('aria-expanded', !isHidden);
     noticesArrow.style.transform = isHidden ? '' : 'rotate(180deg)';
   });
+
+  // 查詢前提示：每次查詢都提醒，以紙本准考證為準
+  function showConfirmBeforeQuery(onConfirm) {
+    var modal = document.getElementById('eqConfirmModal');
+    var okBtn = document.getElementById('eqConfirmOk');
+    if (!modal || !okBtn) { onConfirm(); return; }
+
+    modal.classList.add('open');
+    var cleanup = function () {
+      modal.classList.remove('open');
+      okBtn.removeEventListener('click', handleOk);
+      modal.removeEventListener('click', handleBackdrop);
+      document.removeEventListener('keydown', handleEsc);
+    };
+    var handleOk = function () { cleanup(); onConfirm(); };
+    var handleBackdrop = function (ev) { if (ev.target === modal) cleanup(); };
+    var handleEsc = function (ev) { if (ev.key === 'Escape') cleanup(); };
+    okBtn.addEventListener('click', handleOk);
+    modal.addEventListener('click', handleBackdrop);
+    document.addEventListener('keydown', handleEsc);
+    okBtn.focus();
+  }
 
   function validate(idno) {
     if (!idno) { showError('請輸入身分證字號'); return false; }
