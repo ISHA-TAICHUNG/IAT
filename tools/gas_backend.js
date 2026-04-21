@@ -568,13 +568,13 @@ function doGet(e) {
 
     // Token 驗證
     if (e.parameter.token !== API_TOKEN) {
-        return jsonResponse({ error: "未授權存取" }, 403);
+        return jsonResponse({ error: "未授權存取" });
     }
 
     // Rate Limit
     const clientId = getClientIP(e);
     if (!checkRateLimit(clientId)) {
-        return jsonResponse({ error: "請求過於頻繁，請稍後再試" }, 429);
+        return jsonResponse({ error: "請求過於頻繁，請稍後再試" });
     }
 
     try {
@@ -583,13 +583,13 @@ function doGet(e) {
         }
         if (action === "questions") {
             const cat = e.parameter.cat || "";
-            if (!cat) return jsonResponse({ error: "缺少 cat 參數" }, 400);
+            if (!cat) return jsonResponse({ error: "缺少 cat 參數" });
             return jsonResponse(getQuestions(cat, 80));
         }
         // 健康檢查
         return jsonResponse({ status: "ok" });
     } catch (err) {
-        return jsonResponse({ error: err.message }, 500);
+        return jsonResponse({ error: err.message });
     }
 }
 
@@ -600,13 +600,13 @@ function doPost(e) {
 
         // Token 驗證
         if (body.token !== API_TOKEN) {
-            return jsonResponse({ error: "未授權存取" }, 403);
+            return jsonResponse({ error: "未授權存取" });
         }
 
         // Rate Limit
         const clientId = getClientIP(e);
         if (!checkRateLimit(clientId)) {
-            return jsonResponse({ error: "請求過於頻繁，請稍後再試" }, 429);
+            return jsonResponse({ error: "請求過於頻繁，請稍後再試" });
         }
 
         if (body.action === "feedback") {
@@ -621,9 +621,9 @@ function doPost(e) {
             logAnswerDetails(body);
             return jsonResponse({ success: true });
         }
-        return jsonResponse({ error: "未知 action" }, 400);
+        return jsonResponse({ error: "未知 action" });
     } catch (err) {
-        return jsonResponse({ error: err.message }, 500);
+        return jsonResponse({ error: err.message });
     }
 }
 

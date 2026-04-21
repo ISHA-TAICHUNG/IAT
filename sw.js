@@ -1,21 +1,23 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20260330c";
+const CACHE_NAME = "exam-v20260421c";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
     "./exam.html",
     "./result.html",
     "./manifest.json",
-    "./css/style.css?v=20260330c",
-    "./js/config.js?v=20260330c",
-    "./js/i18n.js?v=20260330c",
-    "./js/utils.js?v=20260330c",
-    "./js/app.js?v=20260330c",
-    "./js/exam.js?v=20260330c",
-    "./js/result.js?v=20260330c",
+    "./css/style.css?v=20260421c",
+    "./js/config.js?v=20260421b",
+    "./js/i18n.js?v=20260421b",
+    "./js/utils.js?v=20260421b",
+    "./js/app.js?v=20260421b",
+    "./js/exam.js?v=20260421b",
+    "./js/result.js?v=20260421b",
     "./query.html",
-    "./css/query.css?v=20260330c",
-    "./js/query.js?v=20260330c",
+    "./css/query.css?v=20260421b",
+    "./js/query.js?v=20260421b",
+    "./exam-query.html",
+    "./js/exam-query.js?v=20260421b",
 ];
 
 // 安裝：預快取靜態資源
@@ -40,17 +42,20 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
     const url = new URL(e.request.url);
 
-    // GAS API → Network-First（有快取 fallback）
+    // GAS API：僅 GET 做 Network-First 快取；POST 直通（避免 POST 被誤快取）
     if (url.href.includes("script.google.com")) {
-        e.respondWith(
-            fetch(e.request)
-                .then((res) => {
-                    const clone = res.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-                    return res;
-                })
-                .catch(() => caches.match(e.request))
-        );
+        if (e.request.method === "GET") {
+            e.respondWith(
+                fetch(e.request)
+                    .then((res) => {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+                        return res;
+                    })
+                    .catch(() => caches.match(e.request))
+            );
+        }
+        // POST / 其他方法 → 不攔截，讓瀏覽器正常發送
         return;
     }
 

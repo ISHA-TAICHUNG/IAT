@@ -12,10 +12,11 @@ function escapeHtml(str) {
 
 /** Toast 通知 */
 function showToast(msg, dur = 2200) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), dur);
+    const toastEl = document.getElementById("toast");
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), dur);
 }
 
 /** 帶 Timeout 的 Fetch（自動附加 API Token） */
@@ -257,27 +258,22 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
     document.getElementById(descElId).value = "";
 }
 
-// 離線反饋佇列：上線後自動補送
-function flushFeedbackQueue() {
+// 離線反饋佇列：上線後自動補送（使用 Promise.allSettled 避免資料遺失）
+async function flushFeedbackQueue() {
     var queue = JSON.parse(localStorage.getItem("feedback_queue") || "[]");
     if (queue.length === 0) return;
-    var remaining = [];
-    queue.forEach(function(payload) {
-        fetch(CONFIG.GAS_URL, {
+    var results = await Promise.allSettled(queue.map(function(payload) {
+        return fetch(CONFIG.GAS_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
-        }).catch(function() {
-            remaining.push(payload);
         });
-    });
-    // 短暫延遲後更新佇列（等 fetch 完成）
-    setTimeout(function() {
-        if (remaining.length > 0) {
-            localStorage.setItem("feedback_queue", JSON.stringify(remaining));
-        } else {
-            localStorage.removeItem("feedback_queue");
-        }
-    }, 3000);
+    }));
+    var remaining = queue.filter(function(_, i) { return results[i].status === 'rejected'; });
+    if (remaining.length > 0) {
+        localStorage.setItem("feedback_queue", JSON.stringify(remaining));
+    } else {
+        localStorage.removeItem("feedback_queue");
+    }
 }

@@ -31,11 +31,13 @@ async function init() {
         document.title = catName + ' — ' + t('exam.title');
         document.getElementById("exam-title").textContent = catName;
         document.getElementById("q-total").textContent = questions.length;
-        document.getElementById("loading").remove();
+        var loadingEl = document.getElementById("loading");
+        if (loadingEl) loadingEl.remove();
 
         renderQuestion();
         updateHeader();
         renderNav();
+        if (timerSeconds <= 0) { finishExam(); return; }
         startTimer();
         document.addEventListener("keydown", handleKey);
         showToast(t('resume.restored'));
@@ -67,7 +69,14 @@ async function init() {
                 const cmQs = shuffleArray(data.filter(function(q) { return q.subject === '共同'; }));
                 const opN = Math.round(numQ * 0.8);
                 const cmN = numQ - opN;
-                questions = shuffleArray(opQs.slice(0, opN).concat(cmQs.slice(0, cmN)));
+                var picked = opQs.slice(0, opN).concat(cmQs.slice(0, cmN));
+                // 題數不足時從剩餘題目補充
+                if (picked.length < numQ) {
+                    var pickedIds = new Set(picked.map(function(q) { return q.id; }));
+                    var extra = shuffleArray(data.filter(function(q) { return !pickedIds.has(q.id); }));
+                    picked = picked.concat(extra.slice(0, numQ - picked.length));
+                }
+                questions = shuffleArray(picked);
             } else {
                 questions = shuffleArray(data).slice(0, numQ);
             }
@@ -83,7 +92,8 @@ async function init() {
         answers = questions.map(() => ({ chosen: null, hinted: false }));
 
         document.getElementById("q-total").textContent = questions.length;
-        document.getElementById("loading").remove();
+        var loadingEl2 = document.getElementById("loading");
+        if (loadingEl2) loadingEl2.remove();
 
         renderQuestion();
         updateHeader();
@@ -340,7 +350,7 @@ function finishExam() {
     isFinishing = true;
     if (timerInterval) clearInterval(timerInterval);
     const totalTime = modeConfig.time * 60;
-    const elapsed = totalTime - timerSeconds;
+    const elapsed = Math.max(0, totalTime - timerSeconds);
 
     // 清除存檔
     clearProgress();
@@ -348,27 +358,22 @@ function finishExam() {
     const resultData = { catId: CAT_ID, catName, questions, answers, elapsed, examMode: EXAM_MODE };
     sessionStorage.setItem("examResult", JSON.stringify(resultData));
 
-    // 回報統計到 GAS（fire-and-forget）
+    // 回報統計到 GAS（使用 sendBeacon 確保頁面跳轉前送出）
     try {
         const realCorrect = answers.filter((a, i) => !a.hinted && a.chosen === questions[i].answer).length;
         const scorePerQ = CONFIG.FULL_SCORE / questions.length;
         const score = Math.round(realCorrect * scorePerQ * 100) / 100;
-        fetch(CONFIG.GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "logResult",
-                token: CONFIG.API_TOKEN,
-                catId: CAT_ID,
-                score,
-                correct: realCorrect,
-                total: questions.length,
-                elapsed,
-                mode: EXAM_MODE,
-                timestamp: new Date().toISOString(),
-            }),
-        }).catch(function(e) { console.warn("stats report failed:", e); });
+        navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
+            action: "logResult",
+            token: CONFIG.API_TOKEN,
+            catId: CAT_ID,
+            score,
+            correct: realCorrect,
+            total: questions.length,
+            elapsed,
+            mode: EXAM_MODE,
+            timestamp: new Date().toISOString(),
+        }));
 
         // 回報答題明細（只送有作答且非查看答案的題目，減少資料量）
         var answerDetails = [];
@@ -379,17 +384,12 @@ function finishExam() {
             }
         });
         if (answerDetails.length > 0) {
-            fetch(CONFIG.GAS_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "logAnswers",
-                    token: CONFIG.API_TOKEN,
-                    catId: CAT_ID,
-                    answers: answerDetails,
-                }),
-            }).catch(function(e) { console.warn("answers report failed:", e); });
+            navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
+                action: "logAnswers",
+                token: CONFIG.API_TOKEN,
+                catId: CAT_ID,
+                answers: answerDetails,
+            }));
         }
     } catch (e) { console.warn("report failed:", e); }
 

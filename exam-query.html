@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>即測即評測驗日期查詢 — 台中職業訓練中心</title>
+  <meta name="description" content="查詢即測即評技能檢定測驗日期、學科術科時間、考場" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260421c" />
+  <link rel="stylesheet" href="css/query.css?v=20260421b" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="header-logo-wrap">
+        <img src="images/logo-header.png" alt="中華民國工業安全衛生協會" class="header-logo-img" />
+      </div>
+      <div>
+        <h1>管理職類測驗 線上服務</h1>
+        <p class="header-sub">職業安全衛生 — 台中職業訓練中心</p>
+      </div>
+      <button class="fontsize-btn" onclick="cycleFontSize()" title="字體大小">A</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+    </div>
+  </header>
+
+  <!-- 導覽 Tab -->
+  <nav class="nav-tabs">
+    <a href="index.html" class="nav-tab">📝 測驗練習</a>
+    <a href="query.html" class="nav-tab">🔍 管理職類查詢</a>
+    <a href="exam-query.html" class="nav-tab active">🛠️ 即測即評查詢</a>
+  </nav>
+
+  <main class="container">
+
+    <!-- 查詢區 -->
+    <div class="query-card" style="margin-top:20px">
+      <h2 class="query-title">🛠️ 即測即評測驗日期查詢</h2>
+      <p class="query-desc">輸入身分證字號，查詢學科/術科測驗日期、時間、座號及考場</p>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--warning-light,#feecdc);border:1px solid #fde68a;border-radius:8px;font-size:0.78rem;color:#92400e;margin-bottom:8px">
+        <span>📍</span> 本查詢功能僅限台中職業訓練中心（龍井教室）使用
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;font-size:0.78rem;color:#1e40af;margin-bottom:16px;margin-left:6px">
+        <span>🎓</span> 僅提供職安衛龍井試場即測即評檢定查詢
+      </div>
+      <form id="examQueryForm">
+        <label class="query-label" for="eqIdno">身分證字號 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="eqIdno" class="query-input" placeholder="請輸入身分證字號，例如：A123456789" required minlength="10" maxlength="10" autocomplete="off" autocapitalize="characters" inputmode="text" />
+        <div class="query-help">1 個英文字母 + 9 個數字，共 10 碼</div>
+        <div class="query-error" id="eqError"><span>⚠</span> <span id="eqErrorText"></span></div>
+        <div class="tip-box tip-info" style="margin-top:10px;font-size:0.82rem">
+          🔒 身分證字號僅用於比對查詢，不會儲存或傳輸至其他系統。
+        </div>
+        <button type="submit" class="query-btn" id="eqBtn" style="margin-top:16px">
+          <span id="eqBtnText">🔍 查詢測驗資訊</span>
+        </button>
+      </form>
+
+      <!-- 搜尋歷史 -->
+      <div id="eqHistory" style="margin-top:16px;display:none">
+        <div style="font-size:0.82rem;color:var(--gray-500);margin-bottom:8px">最近查詢</div>
+        <div id="eqHistoryTags" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- 結果區 -->
+    <div id="eqResults"></div>
+
+    <!-- 測驗方式說明 -->
+    <div class="info-section">
+      <h2>📖 即測即評測驗方式</h2>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h4>🅰️ 免術科</h4>
+          <div class="addr" style="color:var(--gray-600)">僅考學科，免試別為「B」</div>
+          <div class="addr" style="font-size:0.82rem;margin-top:4px">適用已通過術科之考生</div>
+        </div>
+        <div class="contact-card">
+          <h4>🅱️ 上午學科 / 下午術科</h4>
+          <div class="addr" style="color:var(--gray-600)">上午 09:50 開始學科測驗</div>
+          <div class="addr" style="font-size:0.82rem;margin-top:4px">學科結束後下午接續術科</div>
+        </div>
+        <div class="contact-card">
+          <h4>🅲 上午術科 / 下午學科</h4>
+          <div class="addr" style="color:var(--gray-600)">上午 08:30 開始術科測驗</div>
+          <div class="addr" style="font-size:0.82rem;margin-top:4px">術科結束後下午接續學科</div>
+        </div>
+      </div>
+      <div class="tip-box tip-info" style="margin-top:12px">
+        💡 以查詢結果顯示的學科/術科時間為準。如有疑問請致電試場確認。
+      </div>
+    </div>
+
+    <!-- 聯絡資訊 -->
+    <div class="info-section">
+      <h2>📞 聯絡資訊及服務時間</h2>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h4>🏢 職安衛龍井試場</h4>
+          <a href="tel:04-26336999">04-2633-6999</a>
+          <div class="addr">臺中市龍井區中社五街12號</div>
+        </div>
+      </div>
+      <div style="font-size:0.88rem;color:var(--gray-500);margin:12px 0">
+        服務時間：週一至週五 09:00-12:00、13:30-16:30（例假日休息）
+      </div>
+      <div class="tip-box tip-info">
+        💡 如查詢不到資料，可能測驗資訊尚未發布或姓名輸入有誤，請直接致電確認。
+      </div>
+    </div>
+
+    <!-- 測驗地點 -->
+    <div class="info-section">
+      <h2>📍 測驗地點（龍井試場）</h2>
+      <div class="contact-grid">
+        <a href="https://maps.app.goo.gl/nVrARbyT7Bjvi6TY7" target="_blank" rel="noopener" class="contact-card contact-link">
+          <h4>🏢 職安衛龍井試場</h4>
+          <div class="addr">臺中市龍井區中社五街12號</div>
+          <div class="addr" style="font-size:0.82rem;color:var(--gray-500);margin-top:4px">龍井教室 2 樓即測即評學科電腦教室</div>
+          <div class="map-link">🔗 查看 Google 地圖</div>
+        </a>
+      </div>
+      <div class="tip-box tip-warn" style="margin-top:12px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 30 分鐘抵達報到。</div>
+    </div>
+
+    <!-- 注意事項 -->
+    <div class="info-section" style="padding:0;overflow:hidden">
+      <button class="notices-toggle" id="eqNoticesBtn" aria-expanded="false" aria-controls="eqNoticesBody">
+        <span>📋 即測即評測驗注意事項</span>
+        <span id="eqNoticesArrow" class="notices-arrow">▼</span>
+      </button>
+      <div class="notices-content hidden" id="eqNoticesBody">
+        <p><strong>一、報到：</strong>應試者應於測驗前 30 分鐘辦理報到，測驗開始後 15 分鐘尚未入場者不得入場。</p>
+        <p><strong>二、攜帶物品：</strong>測驗當日應攜帶身分證件及准考證，均未攜帶者不得應試。</p>
+        <p><strong>三、測驗流程：</strong>依免試別分為三種測驗方式（詳見上方「測驗方式」說明）。</p>
+        <p><strong>四、學科測驗：</strong>於龍井教室 2 樓即測即評學科電腦教室進行。</p>
+        <p><strong>五、術科測驗：</strong>依職類於指定術科場地進行。</p>
+        <div class="tip-box tip-warn" style="margin:10px 0">
+          <strong>六、禁止事項：</strong>冒名頂替、攜帶手機電子設備、夾帶資料等情事，成績以零分計算或扣分。
+        </div>
+        <p><strong>七、特殊情形：</strong>若測驗當日遇天災或其他不可抗力因素，依主管機關公告辦理。</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <img src="images/logo.png" alt="ISHA" class="footer-logo-img" />
+    <div class="footer-org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+    <div>管理職類暨即測即評線上服務系統</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.js?v=20260421b"></script>
+  <script src="js/utils.js?v=20260421b"></script>
+  <script src="js/exam-query.js?v=20260421b"></script>
+</body>
+
+</html>

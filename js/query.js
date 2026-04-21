@@ -8,6 +8,7 @@
   var TIMEOUT = 15000;
 
   var form = document.getElementById('queryForm');
+  if (!form) return; // 非 query 頁面，跳過初始化
   var nameInput = document.getElementById('qName');
   var btn = document.getElementById('qBtn');
   var btnText = document.getElementById('qBtnText');

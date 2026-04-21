@@ -259,7 +259,7 @@ function renderResumeBanner() {
   strong.textContent = t('resume.title');
   infoDiv.appendChild(strong);
   var span1 = document.createElement('span');
-  span1.textContent = escapeHtml(saved.catName) + ' — ' + t('mode.' + saved.examMode) + ', ' + t('exam.answered') + ' ' + answered + '/' + saved.questions.length + ' ' + t('mode.questions');
+  span1.textContent = saved.catName + ' — ' + t('mode.' + saved.examMode) + ', ' + t('exam.answered') + ' ' + answered + '/' + saved.questions.length + ' ' + t('mode.questions');
   infoDiv.appendChild(span1);
   el.appendChild(infoDiv);
 
