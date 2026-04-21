@@ -694,12 +694,13 @@ function getQuestions(catId, count) {
         return b;
     }
 
-    // 依 subject 欄位做 80/20 配比抽題（操作 80%、共同 20%）
+    // 依 subject 欄位做 80/20 配比抽題（操作/專業 80%、共同 20%）
     var hasSubject = all.some(function (q) { return q.subject; });
     var pool;
 
     if (hasSubject) {
-        var opQs = all.filter(function (q) { return q.subject === "操作"; });
+        // 「操作」(舊) 和「專業」(新) 都視為主科
+        var opQs = all.filter(function (q) { return q.subject === "操作" || q.subject === "專業"; });
         var cmQs = all.filter(function (q) { return q.subject === "共同"; });
         var opCount = Math.round(count * 0.8);
         var cmCount = count - opCount;

@@ -8,7 +8,29 @@ let questions = [];
 let isFinishing = false; // 防止 finishExam 重複觸發
 let catName = "";
 let current = 0;
-let answers = [];      // answers[i] = { chosen: number|null, hinted: bool }
+let answers = [];      // answers[i] = { chosen: number|array|null, hinted: bool }
+
+// 複選題輔助：判斷答對 & 取得正確答案索引陣列
+function getAnswerArr(q) {
+    return Array.isArray(q.answer) ? q.answer.slice().sort() : [q.answer];
+}
+function getChosenArr(chosen) {
+    if (chosen === null || chosen === undefined) return [];
+    return Array.isArray(chosen) ? chosen.slice().sort() : [chosen];
+}
+function isAnswerCorrect(q, chosen) {
+    if (chosen === null || chosen === undefined) return false;
+    const a = getAnswerArr(q);
+    const c = getChosenArr(chosen);
+    if (a.length !== c.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== c[i]) return false;
+    return true;
+}
+function formatCorrectAnswer(q) {
+    const labels = ['A','B','C','D'];
+    const a = getAnswerArr(q);
+    return a.map(i => labels[i] + '. ' + q.options[i]).join('、');
+}
 
 // 計時器
 let timerInterval = null;
@@ -184,9 +206,14 @@ function renderQuestion() {
     const q = questions[current];
     const ans = answers[current];
     const isMock = EXAM_MODE === 'mock';
-    const isAnswered = isMock ? false : (ans.chosen !== null || ans.hinted);
-    const hasChosen = ans.chosen !== null;
+    const isMulti = !!q.multi || Array.isArray(q.answer);
+    const chosenArr = getChosenArr(ans.chosen);
+    const correctArr = getAnswerArr(q);
+    const hasSelection = chosenArr.length > 0;
+    // 複選題：答題完成條件 = 已按「送出答案」(ans.submitted)；單選題：ans.chosen 有值即完成
+    const isAnswered = isMock ? false : (isMulti ? (ans.submitted === true || ans.hinted) : (ans.chosen !== null || ans.hinted));
     const bookmarked = isBookmarked(CAT_ID, q.id);
+    const isCorrect = isAnswerCorrect(q, ans.chosen);
 
     const noScoreBadge = (!isMock && ans.hinted)
         ? `<div class="no-score-badge">${t('exam.noscore')}</div>` : "";
@@ -202,35 +229,37 @@ function renderQuestion() {
             ${bookmarked ? "★" : "☆"}
           </button>
         </div>
+        ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題（請選 ${correctArr.length} 個正確答案）</div>` : ''}
         <div class="q-text">${escapeHtml(q.q)}</div>
         ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="lazy" onclick="openImageModal(this.src)"></div>` : ''}
         <div class="options-list" id="options">
           ${q.options.map((opt, i) => {
         let cls = "";
+        const isSelected = chosenArr.indexOf(i) >= 0;
         if (isMock) {
-            if (i === ans.chosen) cls = "mock-selected";
+            if (isSelected) cls = "mock-selected";
         } else if (isAnswered) {
-            if (i === q.answer) cls = ans.hinted && ans.chosen === null ? "hint" : "correct";
-            else if (i === ans.chosen && ans.chosen !== q.answer) cls = "wrong";
-        } else if (i === ans.chosen) cls = "selected";
+            if (correctArr.indexOf(i) >= 0) cls = ans.hinted && !hasSelection ? "hint" : "correct";
+            else if (isSelected) cls = "wrong";
+        } else if (isSelected) cls = "selected";
         var btnDisabled = isMock ? false : isAnswered;
         return `
               <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" ${btnDisabled ? "disabled" : ""}>
-                <span class="option-label">${LABELS[i]}</span>
+                <span class="option-label">${LABELS[i]}${isMulti ? (isSelected ? ' ✓' : '') : ''}</span>
                 ${q.optionImages && q.optionImages[i]
                   ? `<img src="${q.optionImages[i]}" alt="選項${LABELS[i]}" class="option-image" loading="lazy">`
                   : `<span>${escapeHtml(opt)}</span>`}
               </button>`;
     }).join("")}
         </div>
-        ${isMock ? '' : `<div class="answer-hint ${isAnswered ? "show " + (ans.hinted && ans.chosen === null ? "hint-only" : ans.chosen === q.answer ? "correct" : "wrong") : ""}"
+        ${isMock ? '' : `<div class="answer-hint ${isAnswered ? "show " + (ans.hinted && !hasSelection ? "hint-only" : isCorrect ? "correct" : "wrong") : ""}"
           id="answer-hint">
           ${isAnswered
-            ? ans.hinted && ans.chosen === null
-                ? `${t('exam.hint.prefix')}${escapeHtml(q.options[q.answer])}${t('exam.hint.suffix')}`
-                : ans.chosen === q.answer
+            ? ans.hinted && !hasSelection
+                ? `${t('exam.hint.prefix')}${escapeHtml(formatCorrectAnswer(q))}${t('exam.hint.suffix')}`
+                : isCorrect
                     ? t('exam.correct')
-                    : `${t('exam.wrong.prefix')}${escapeHtml(q.options[q.answer])}`
+                    : `${t('exam.wrong.prefix')}${escapeHtml(formatCorrectAnswer(q))}`
             : ""}
         </div>`}
       </div>
@@ -245,21 +274,47 @@ function renderQuestion() {
             ? `<button class="btn btn-primary" onclick="nextQ()">
                ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
              </button>`
+            : isMulti && hasSelection
+            ? `<button class="btn btn-primary" onclick="submitMulti()">送出答案</button>
+               <button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`
             : `<button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`}
         <button class="btn btn-feedback" onclick="openFeedback()">${t('exam.btn.feedback')}</button>
       </div>
     </div>`;
 }
 
+// 複選題送出答案（揭示對錯）
+function submitMulti() {
+    const ans = answers[current];
+    ans.submitted = true;
+    renderQuestion();
+    saveProgress();
+    updateHeader();
+    renderNav();
+}
+
 // ===== 選擇選項 =====
 function selectOption(idx) {
+    const q = questions[current];
     const ans = answers[current];
-    if (EXAM_MODE === 'mock') {
-        // 模擬考：可以改答案
-        ans.chosen = idx;
+    const isMulti = !!q.multi || Array.isArray(q.answer);
+
+    if (isMulti) {
+        // 複選題：toggle 選取；若已提交或模擬考外已確認，禁止改答
+        if (EXAM_MODE !== 'mock' && ans.submitted) return;
+        if (ans.hinted) return;
+        if (!Array.isArray(ans.chosen)) ans.chosen = [];
+        const pos = ans.chosen.indexOf(idx);
+        if (pos >= 0) ans.chosen.splice(pos, 1);
+        else ans.chosen.push(idx);
+        if (ans.chosen.length === 0) ans.chosen = null;
     } else {
-        if (ans.chosen !== null || ans.hinted) return;
-        ans.chosen = idx;
+        if (EXAM_MODE === 'mock') {
+            ans.chosen = idx;
+        } else {
+            if (ans.chosen !== null || ans.hinted) return;
+            ans.chosen = idx;
+        }
     }
     renderQuestion();
     updateHeader();
@@ -268,9 +323,18 @@ function selectOption(idx) {
 }
 
 function showHint() {
+    const q = questions[current];
     const ans = answers[current];
-    if (ans.chosen !== null) return;
-    ans.hinted = true;
+    const isMulti = !!q.multi || Array.isArray(q.answer);
+    // 複選題：若已有選擇且尚未送出，showHint 等同放棄（標記為已查看答案）
+    if (isMulti) {
+        if (ans.submitted) return;
+        ans.hinted = true;
+        ans.chosen = null;
+    } else {
+        if (ans.chosen !== null) return;
+        ans.hinted = true;
+    }
     renderQuestion();
     updateHeader();
     renderNav();
@@ -360,7 +424,7 @@ function finishExam() {
 
     // 回報統計到 GAS（使用 sendBeacon 確保頁面跳轉前送出）
     try {
-        const realCorrect = answers.filter((a, i) => !a.hinted && a.chosen === questions[i].answer).length;
+        const realCorrect = answers.filter((a, i) => !a.hinted && isAnswerCorrect(questions[i], a.chosen)).length;
         const scorePerQ = CONFIG.FULL_SCORE / questions.length;
         const score = Math.round(realCorrect * scorePerQ * 100) / 100;
         navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
@@ -380,7 +444,7 @@ function finishExam() {
         questions.forEach(function(q, i) {
             var a = answers[i];
             if (a.chosen !== null && !a.hinted) {
-                answerDetails.push({ qId: q.id, correct: a.chosen === q.answer });
+                answerDetails.push({ qId: q.id, correct: isAnswerCorrect(q, a.chosen) });
             }
         });
         if (answerDetails.length > 0) {

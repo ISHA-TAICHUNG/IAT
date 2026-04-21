@@ -7,19 +7,42 @@ try { data = JSON.parse(raw); } catch(e) { location.replace("index.html"); throw
 var catId = data.catId, catName = data.catName, questions = data.questions, answers = data.answers, elapsed = data.elapsed, examMode = data.examMode;
 var modeConf = CONFIG.MODES[examMode] || CONFIG.MODES.normal;
 
+// ===== 複選題輔助 =====
+function ansArr(a) { return (a === null || a === undefined) ? [] : (Array.isArray(a) ? a.slice().sort() : [a]); }
+function corrArr(q) { return Array.isArray(q.answer) ? q.answer.slice().sort() : [q.answer]; }
+function isCorr(q, chosen) {
+  if (chosen === null || chosen === undefined) return false;
+  if (Array.isArray(chosen) && chosen.length === 0) return false;
+  var a = corrArr(q), c = ansArr(chosen);
+  if (a.length !== c.length) return false;
+  for (var i = 0; i < a.length; i++) if (a[i] !== c[i]) return false;
+  return true;
+}
+function formatAns(q, chosen) {
+  var labels = ['A','B','C','D'];
+  var arr = ansArr(chosen);
+  if (arr.length === 0) return '';
+  return arr.map(function(i){ return labels[i] + '. ' + q.options[i]; }).join('、');
+}
+function formatCorrect(q) {
+  var labels = ['A','B','C','D'];
+  return corrArr(q).map(function(i){ return labels[i] + '. ' + q.options[i]; }).join('、');
+}
+
 // ===== 計分 =====
 var correct = 0, wrong = 0, hinted = 0, skipped = 0;
 var wrongList = [];
 
 questions.forEach(function(q, i) {
   var ans = answers[i];
+  var chosenEmpty = ans.chosen === null || ans.chosen === undefined || (Array.isArray(ans.chosen) && ans.chosen.length === 0);
   if (ans.hinted) {
     hinted++;
     wrongList.push({ q: q, ans: ans, idx: i + 1, status: "hinted" });
-  } else if (ans.chosen === null) {
+  } else if (chosenEmpty) {
     skipped++;
     wrongList.push({ q: q, ans: ans, idx: i + 1, status: "skipped" });
-  } else if (ans.chosen === q.answer) {
+  } else if (isCorr(q, ans.chosen)) {
     correct++;
   } else {
     wrong++;
@@ -27,7 +50,7 @@ questions.forEach(function(q, i) {
   }
 });
 
-var realCorrect = answers.filter(function(a, i) { return !a.hinted && a.chosen === questions[i].answer; }).length;
+var realCorrect = answers.filter(function(a, i) { return !a.hinted && isCorr(questions[i], a.chosen); }).length;
 var scorePerQ = CONFIG.FULL_SCORE / questions.length;
 var score = Math.round(realCorrect * scorePerQ * 100) / 100;
 var pass = score >= CONFIG.PASS_SCORE;
@@ -192,15 +215,16 @@ if (wrongList.length > 0) {
 
     var metaDiv = document.createElement('div');
     metaDiv.className = 'wi-meta';
-    if (item.ans.chosen !== null && item.ans.chosen !== item.q.answer) {
+    var chosenEmpty = item.ans.chosen === null || item.ans.chosen === undefined || (Array.isArray(item.ans.chosen) && item.ans.chosen.length === 0);
+    if (!chosenEmpty && !isCorr(item.q, item.ans.chosen)) {
       var yourSpan = document.createElement('span');
       yourSpan.className = 'wi-your';
-      yourSpan.textContent = t('result.your.answer') + item.q.options[item.ans.chosen];
+      yourSpan.textContent = t('result.your.answer') + formatAns(item.q, item.ans.chosen);
       metaDiv.appendChild(yourSpan);
     }
     var correctSpan = document.createElement('span');
     correctSpan.className = 'wi-correct';
-    correctSpan.textContent = t('result.correct.answer') + item.q.options[item.q.answer];
+    correctSpan.textContent = t('result.correct.answer') + formatCorrect(item.q);
     metaDiv.appendChild(correctSpan);
     wi.appendChild(metaDiv);
 
