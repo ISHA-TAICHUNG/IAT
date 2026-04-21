@@ -140,7 +140,7 @@ function renderDropdown(cats) {
 
   } else {
     // 中文模式：分群組
-    var groupOrder = ["業務主管", "作業主管", "職護", "即測即評"];
+    var groupOrder = ["業務主管", "作業主管", "職護", "全國技術士", "即測即評"];
     var groups = cats.reduce(function(acc, c) {
       (acc[c.group] = acc[c.group] || []).push(c);
       return acc;

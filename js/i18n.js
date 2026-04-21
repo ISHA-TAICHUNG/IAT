@@ -185,6 +185,7 @@ const I18N = {
   'group.業務主管': { 'zh-TW': '業務主管', vi: 'Quản lý', id: 'Manajer', th: 'ผู้จัดการ', en: 'Manager' },
   'group.作業主管': { 'zh-TW': '作業主管', vi: 'Giám sát', id: 'Supervisor', th: 'หัวหน้างาน', en: 'Supervisor' },
   'group.職護': { 'zh-TW': '職護', vi: 'Y tá', id: 'Perawat K3', th: 'พยาบาล', en: 'Nurse' },
+  'group.全國技術士': { 'zh-TW': '全國技術士', vi: 'Kỹ thuật viên quốc gia', id: 'Teknisi Nasional', th: 'ช่างเทคนิคแห่งชาติ', en: 'National Technician' },
   'group.即測即評': { 'zh-TW': '即測即評', vi: 'Đánh giá tức thì', id: 'Penilaian Langsung', th: 'ประเมินทันที', en: 'Instant Assessment' },
 };
 
