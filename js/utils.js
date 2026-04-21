@@ -1,5 +1,13 @@
 // ===== 共用工具函式 =====
 
+/** 取得特定職類的及格分數（支援 PASS_SCORE_BY_CAT 覆蓋） */
+function getPassScore(catId) {
+    if (catId && CONFIG.PASS_SCORE_BY_CAT && CONFIG.PASS_SCORE_BY_CAT[catId] !== undefined) {
+        return CONFIG.PASS_SCORE_BY_CAT[catId];
+    }
+    return CONFIG.PASS_SCORE;
+}
+
 /** XSS 防護：HTML 跳脫 */
 function escapeHtml(str) {
     return String(str)

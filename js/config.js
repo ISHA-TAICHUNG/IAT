@@ -10,8 +10,13 @@ const CONFIG = {
     // 滿分
     FULL_SCORE: 100,
 
-    // 及格分數
+    // 及格分數（預設 60）
     PASS_SCORE: 60,
+
+    // 特定職類的及格分數覆蓋（key = categoryId）
+    PASS_SCORE_BY_CAT: {
+        '職護': 70,
+    },
 
     // 測驗模式
     MODES: {

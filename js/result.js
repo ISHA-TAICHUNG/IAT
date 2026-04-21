@@ -53,7 +53,8 @@ questions.forEach(function(q, i) {
 var realCorrect = answers.filter(function(a, i) { return !a.hinted && isCorr(questions[i], a.chosen); }).length;
 var scorePerQ = CONFIG.FULL_SCORE / questions.length;
 var score = Math.round(realCorrect * scorePerQ * 100) / 100;
-var pass = score >= CONFIG.PASS_SCORE;
+var passScore = getPassScore(catId);
+var pass = score >= passScore;
 
 // ===== 儲存歷史成績 =====
 saveExamHistory({
@@ -144,10 +145,10 @@ if (opCount > 0 || cmCount > 0) {
   card.appendChild(ratioDiv);
 }
 
-// 說明
+// 說明（動態帶入職類及格分數）
 var disc = document.createElement('p');
 disc.style.cssText = 'font-size:.82rem;color:var(--gray-500);margin-bottom:20px;';
-disc.textContent = t('result.disclaimer');
+disc.textContent = t('result.disclaimer').replace(/60/g, String(passScore));
 card.appendChild(disc);
 
 // 操作按鈕
@@ -271,7 +272,7 @@ if (history.length > 1) {
     hi.appendChild(catDiv);
 
     var sDiv = document.createElement('div');
-    sDiv.className = 'hi-score ' + (h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail');
+    sDiv.className = 'hi-score ' + (h.score >= getPassScore(h.catId) ? 'pass' : 'fail');
     sDiv.textContent = h.score + ' ' + t('result.score.unit');
     hi.appendChild(sDiv);
 

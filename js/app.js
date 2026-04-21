@@ -322,7 +322,7 @@ function renderHomeHistory() {
     item.appendChild(catDiv);
 
     var scoreDiv = document.createElement('div');
-    scoreDiv.className = 'hi-score ' + (h.score >= CONFIG.PASS_SCORE ? 'pass' : 'fail');
+    scoreDiv.className = 'hi-score ' + (h.score >= getPassScore(h.catId) ? 'pass' : 'fail');
     scoreDiv.textContent = h.score + ' ' + t('result.score.unit');
     item.appendChild(scoreDiv);
 
