@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>檔案轉檔工具 — 本地使用</title>
+  <meta name="description" content="PDF→TXT / XLSX→CSV 轉檔工具。所有轉檔在瀏覽器本地執行，檔案不會上傳任何伺服器。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260421n" />
+  <link rel="stylesheet" href="css/query.css?v=20260421n" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+
+  <!-- PDF.js（純前端 PDF 文字抽取）-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+  <!-- SheetJS（純前端 XLSX → CSV）-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.20.1/xlsx.full.min.js"></script>
+
+  <style>
+    .convert-card {
+      background: var(--card-bg, #fff);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+      margin-bottom: 20px;
+    }
+
+    .convert-card h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .drop-zone {
+      border: 2.5px dashed var(--gray-300, #cbd5e1);
+      border-radius: 14px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: var(--gray-50, #f8fafc);
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--primary, #ea580c);
+      background: #fff7ed;
+    }
+
+    .drop-zone.dragover {
+      transform: scale(1.01);
+    }
+
+    .drop-zone-icon {
+      font-size: 2.4rem;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-main {
+      font-weight: 600;
+      color: var(--gray-800, #1f2937);
+      margin-bottom: 4px;
+    }
+
+    .drop-zone-sub {
+      font-size: .85rem;
+      color: var(--gray-500, #6b7280);
+    }
+
+    .drop-zone input[type=file] {
+      display: none;
+    }
+
+    .file-list {
+      margin-top: 16px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--gray-50, #f8fafc);
+      border-radius: 10px;
+      margin-bottom: 6px;
+      font-size: .92rem;
+    }
+
+    .file-item .status {
+      font-size: .82rem;
+      padding: 2px 10px;
+      border-radius: 8px;
+    }
+
+    .status.waiting {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    .status.processing {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status.done {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .convert-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-convert {
+      background: var(--primary, #ea580c);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .92rem;
+    }
+
+    .btn-convert:hover {
+      background: #c2410c;
+    }
+
+    .btn-convert:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--gray-600, #4b5563);
+      border: 1.5px solid var(--gray-300, #cbd5e1);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: .92rem;
+    }
+
+    .privacy-notice {
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      color: #1e3a8a;
+      font-size: .88rem;
+      line-height: 1.6;
+    }
+
+    .privacy-notice strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: .95rem;
+    }
+
+    .log-area {
+      margin-top: 12px;
+      background: #0f172a;
+      color: #cbd5e1;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: .78rem;
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .log-area.show {
+      display: block;
+    }
+
+    .log-line {
+      margin: 2px 0;
+    }
+
+    .log-line.ok {
+      color: #86efac;
+    }
+
+    .log-line.err {
+      color: #fca5a5;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="header-logo-wrap">
+        <img src="images/logo-header.png" alt="中華民國工業安全衛生協會" class="header-logo-img" />
+      </div>
+      <div>
+        <h1>管理職類測驗 線上服務</h1>
+        <p class="header-sub">職業安全衛生 — 台中職業訓練中心</p>
+      </div>
+      <button class="fontsize-btn" onclick="cycleFontSize()" title="字體大小">A</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="切換深色模式">🌙</button>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <a href="index.html" class="nav-tab">📝 測驗練習</a>
+    <a href="query.html" class="nav-tab">🔍 管理職類查詢</a>
+    <a href="exam-query.html" class="nav-tab">🛠️ 即測即評查詢</a>
+    <a href="convert.html" class="nav-tab active">🔄 檔案轉檔</a>
+  </nav>
+
+  <main class="container">
+
+    <div class="privacy-notice">
+      <strong>🔒 隱私保證 — 檔案絕對不上傳</strong>
+      所有轉檔都在您的瀏覽器裡處理，不會上傳任何伺服器。關閉分頁後資料即消失。
+      可離線使用（第一次開啟後）。
+    </div>
+
+    <!-- PDF → TXT -->
+    <div class="convert-card">
+      <h2>📄 座位表 PDF → TXT</h2>
+      <p style="color:var(--gray-600);font-size:0.9rem;margin:8px 0 14px">
+        將 Google 文件匯出的座位表 PDF 轉成純文字格式，供管理職類查詢系統調閱。
+      </p>
+      <label class="drop-zone" id="pdfDrop">
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-main">拖曳 PDF 檔到這裡或點擊選取</div>
+        <div class="drop-zone-sub">支援多個檔案、.pdf 格式</div>
+        <input type="file" id="pdfInput" accept=".pdf,application/pdf" multiple />
+      </label>
+      <div class="file-list" id="pdfFileList"></div>
+      <div class="convert-actions">
+        <button class="btn-convert" id="pdfConvertBtn" disabled>🔄 開始轉檔並下載 TXT</button>
+        <button class="btn-clear" id="pdfClearBtn">清除</button>
+      </div>
+      <div class="log-area" id="pdfLog"></div>
+    </div>
+
+    <!-- XLSX → CSV -->
+    <div class="convert-card">
+      <h2>📊 即測即評報檢資料 XLSX → CSV</h2>
+      <p style="color:var(--gray-600);font-size:0.9rem;margin:8px 0 14px">
+        將報檢資料或學科報檢資料 XLSX 轉成 CSV，<strong>自動過濾電話、MAIL、地址等個資</strong>，
+        只保留查詢必要的欄位，供即測即評查詢系統調閱。
+      </p>
+      <label class="drop-zone" id="xlsxDrop">
+        <div class="drop-zone-icon">📊</div>
+        <div class="drop-zone-main">拖曳 XLSX 檔到這裡或點擊選取</div>
+        <div class="drop-zone-sub">自動辨識術科報檢 / 學科報檢</div>
+        <input type="file" id="xlsxInput"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple />
+      </label>
+      <div class="file-list" id="xlsxFileList"></div>
+      <div class="convert-actions">
+        <button class="btn-convert" id="xlsxConvertBtn" disabled>🔄 開始轉檔並下載 CSV</button>
+        <button class="btn-clear" id="xlsxClearBtn">清除</button>
+      </div>
+      <div class="log-area" id="xlsxLog"></div>
+    </div>
+
+    <div class="info-section">
+      <h2>📖 使用說明</h2>
+      <div style="padding:0 4px;line-height:1.8;color:var(--gray-700)">
+        <p><strong>座位表 PDF → TXT：</strong></p>
+        <ol style="margin-left:20px">
+          <li>上傳即測即評練習網發佈的座位表 PDF</li>
+          <li>自動抽取所有頁面文字、保持原排版換行</li>
+          <li>下載產生的 .txt 檔，上傳到管理職類查詢系統的 Drive 資料夾</li>
+        </ol>
+        <p style="margin-top:12px"><strong>XLSX → CSV：</strong></p>
+        <ol style="margin-left:20px">
+          <li>術科報檢資料（含 SKT1 分頁）→ 產出 <code>報檢資料.csv</code>（8 欄位）</li>
+          <li>學科報檢資料（檔名含「學科報檢資料」）→ 產出 <code>學科報檢資料.csv</code>（7 欄位）</li>
+          <li>電話、MAIL、地址等個資欄位自動過濾不輸出</li>
+          <li>下載 CSV 後上傳到即測即評查詢系統的 Drive 資料夾</li>
+        </ol>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    <img src="images/logo.png" alt="ISHA" class="footer-logo-img" />
+    <div class="footer-org">社團法人中華民國工業安全衛生協會附設台中職業訓練中心</div>
+    <div>檔案轉檔工具 — 本地使用（不上傳雲端）</div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.js?v=20260421n"></script>
+  <script src="js/utils.js?v=20260421n"></script>
+  <script src="js/convert.js?v=20260421n" type="module"></script>
+</body>
+
+</html>
