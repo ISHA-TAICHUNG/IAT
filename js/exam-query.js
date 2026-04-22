@@ -186,6 +186,24 @@
     btnText.textContent = '🔍 查詢測驗資訊';
   }
 
+  // 依當天最早場次時間推算報到時間
+  // 上午場（< 12:00）→ 7:30 ~ 7:40；下午場 → 12:50
+  function computeCheckinTime(mode, writtenTime, practicalTime) {
+    var earliest = null;
+    if (mode.code === 'B') {
+      // 免術科只考學科
+      earliest = writtenTime;
+    } else {
+      // 取學科、術科中較早的開始時間
+      var times = [writtenTime, practicalTime].filter(Boolean);
+      times.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+      earliest = times[0];
+    }
+    if (!earliest) return '—';
+    var isMorning = /^0[6-9]|^1[0-1]/.test(String(earliest));
+    return isMorning ? '上午 7:30 ~ 7:40' : '中午 12:50';
+  }
+
   function getExamMode(dstng, writtenTime, practicalTime) {
     if (dstng === 'B' || dstng === 'b') return { code: 'B', label: '🅰️ 免術科', desc: '僅考學科' };
     var wMorn = writtenTime && /^0[6-9]|^1[0-2]/.test(writtenTime);
@@ -254,9 +272,14 @@
       var cert = item.certNumber || item.aeno || '';
       var occ = getOccupation(item.pno, item.egr || item.level);
 
+      // 推算當天最早場次的報到時間（上午場 7:30-7:40、下午場 12:50）
+      var checkinTime = computeCheckinTime(mode, item.writtenTime, item.practicalTime);
+
       var fields = [
+        { label: '身分證字號', value: item.idno || '—', icon: '🪪', hl: false },
         { label: '職類 / 級別', value: occ, icon: '📚', hl: false },
-        { label: '准考證號', value: cert ? String(cert).trim() : '-', icon: '🎫', hl: false }
+        { label: '准考證號', value: cert ? String(cert).trim() : '-', icon: '🎫', hl: false },
+        { label: '報到時間', value: checkinTime, icon: '🚶', hl: true },
       ];
 
       // 學科：所有人都考（含免術科者）
