@@ -230,7 +230,7 @@ function renderQuestion() {
             ${bookmarked ? "★" : "☆"}
           </button>
         </div>
-        ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題（請選 ${correctArr.length} 個正確答案）</div>` : ''}
+        ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題</div>` : ''}
         <div class="q-text">${escapeHtml(q.q)}</div>
         ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="lazy" onclick="openImageModal(this.src)"></div>` : ''}
         <div class="options-list" id="options">
