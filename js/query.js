@@ -152,27 +152,14 @@
       var grid = document.createElement('div');
       grid.className = 'result-grid';
 
-      // 身分證字號欄位：優先使用 API 提供的欄位，避免同名同姓誤認
-      var idno = item.idno || item.idNumber || item.idCard || '';
-      var maskedIdno = '';
-      if (idno && idno.length === 10) {
-        maskedIdno = idno.substring(0, 2) + '****' + idno.substring(6);
-      } else if (idno) {
-        maskedIdno = idno;
-      }
-
-      var fields = [];
-      if (maskedIdno) {
-        fields.push({ label: '身分證字號', value: maskedIdno, icon: '🪪', hl: false });
-      }
-      fields = fields.concat([
+      var fields = [
         { label: '測驗日期', value: item.testDate, icon: '📅', hl: false },
         { label: '報到時間', value: item.checkinTime, icon: '🚶', hl: true },
         { label: '測驗時間', value: item.testTime, icon: '⏰', hl: false },
         { label: '座號', value: item.seatNumber, icon: '💺', hl: false },
         { label: '測驗教室', value: (item.testRoom || '').replace(/第9教室/g, '忠明教室'), icon: '🏫', hl: true },
         { label: '測驗職類', value: item.testClass, icon: '📚', hl: false },
-      ]);
+      ];
 
       fields.forEach(function(f) {
         var field = document.createElement('div');
