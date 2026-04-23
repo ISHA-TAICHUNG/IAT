@@ -13,8 +13,8 @@
  * - 學科報檢資料.csv（來自 xxx學科報檢資料.xlsx）
  *
  * 使用方式：
- * - POST 請求，body: {"action": "examQuery", "idno": "A123456789"}
- * - 回傳: {"success": true, "data": [{...}]}
+ * - POST 請求，body: {"action": "examQuery", "name": "王小明", "last4": "6789"}
+ * - 回傳: {"success": true, "data": [{...}]}（身分證欄位已遮罩為 ******XXXX）
  */
 
 // ======== 設定區 ========
@@ -120,21 +120,39 @@ function doPost(e) {
     var params = JSON.parse(e.postData.contents);
     var action = params.action || 'examQuery';
 
+    // 管理端點：上傳新 CSV 到 Drive（覆蓋舊檔）
+    // 需帶 adminToken = DEBUG_TOKEN 才能呼叫
+    if (action === 'adminReplaceCsv') {
+      if (params.adminToken !== CONFIG.DEBUG_TOKEN) {
+        return jsonResponse({ success: false, error: '授權失敗' });
+      }
+      return adminReplaceCsv(params.filename, params.content);
+    }
+
     if (action !== 'examQuery') {
       return jsonResponse({ success: false, error: 'Invalid action' });
     }
 
-    var idno = String(params.idno || '').toUpperCase().trim();
-    if (!validateIdno(idno)) {
-      return jsonResponse({ success: false, error: '身分證字號格式錯誤' });
+    // 以姓名 + 身分證末 4 碼查詢（2026-04-23 起唯一查詢方式）
+    var name = String(params.name || '').trim();
+    var last4 = String(params.last4 || '').trim();
+
+    if (!name || !last4) {
+      return jsonResponse({ success: false, error: '缺少查詢參數（需姓名+身分證末4碼）' });
+    }
+    if (name.length < 2 || name.length > 20) {
+      return jsonResponse({ success: false, error: '姓名長度應為 2-20 字元' });
+    }
+    if (!/^\d{4}$/.test(last4)) {
+      return jsonResponse({ success: false, error: '身分證末 4 碼格式錯誤（應為 4 位數字）' });
     }
 
-    // Rate limit（含全域 + 單一 idno 雙層保護）
-    if (!checkRateLimit(idno)) {
+    var queryKey = 'n_' + name + '_' + last4;
+    if (!checkRateLimit(queryKey)) {
       return jsonResponse({ success: false, error: '查詢過於頻繁，請稍後再試' });
     }
 
-    var result = queryByIdno(idno);
+    var result = queryByNameAndLast4(name, last4);
     return jsonResponse({ success: true, data: result });
 
   } catch (err) {
@@ -190,73 +208,67 @@ function debugInfo() {
 }
 
 // ======== 查詢邏輯 ========
-function queryByIdno(idno) {
-  // 查詢結果用 cache（單筆結果小，不會超過 100KB）
+// 新版：以姓名 + 身分證末 4 碼查詢（個資敏感度較低）
+function queryByNameAndLast4(name, last4) {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('query_' + idno);
+  var cacheKey = 'qn_' + name + '_' + last4;
+  var cached = cache.get(cacheKey);
   if (cached) {
     try { return JSON.parse(cached); } catch (e) { }
   }
 
-  // 讀取報檢資料
   var registrations = loadRegistrations();
-
-  // 過濾該身分證的資料
   var myRecords = registrations.filter(function (r) {
-    return r.idno === idno;
+    if (!r.name || !r.idno_last4) return false;
+    return r.name === name && r.idno_last4 === last4;
   });
 
   if (myRecords.length === 0) return [];
 
-  // 讀取學科報檢資料並建 AENO → 學科場次 的索引（首選資料源：直接精確）
   var writtenIndex = loadWrittenIndex();
-
-  // 組合結果
   var results = myRecords.map(function (reg) {
-    var dstngClean = (reg.dstng || '').trim();
-    var isExemptPractical = (dstngClean === 'B'); // DSTNG='B' = 免術科（只考學科）
-
-    var result = {
-      studentName: reg.name,
-      idno: maskIdno(reg.idno),
-      certNumber: reg.aeno,
-      pno: reg.pno,
-      occupation: PNO_MAP[reg.pno] || reg.pno,
-      egr: reg.egr,
-      exemption: dstngClean, // 'B' = 免術科（僅考學科）
-    };
-
-    // 術科資訊：免術科者沒有術科日期時間
-    if (!isExemptPractical) {
-      result.practicalDate = reg.opexdt;
-      result.practicalTime = reg.opextime;
-    }
-
-    // 學科資訊：所有人（含免術科者）都要考學科 → 讀學科報檢資料
-    var wr = writtenIndex[reg.aeno] || null;
-    if (wr && wr.exdate && wr.extime) {
-      result.writtenDate = wr.exdate;
-      result.writtenTime = wr.extime;
-      result.writtenRoom = wr.room || DEFAULT_WRITTEN_ROOM;
-      if (wr.distid) result.writtenSession = wr.distid;
-    } else if (!isExemptPractical && reg.opextime) {
-      // Fallback：學科報檢資料缺此人 → 用上下午互補推算（僅需考術科者可推算，
-      // 因免術科者無術科時間可參照）
-      var pTime = String(reg.opextime);
-      var isPracticalMorning = /^0[6-9]|^1[0-2]/.test(pTime);
-      result.writtenDate = reg.opexdt;
-      result.writtenTime = isPracticalMorning ? '13:20-15:00' : '10:20-12:00';
-      result.writtenRoom = DEFAULT_WRITTEN_ROOM;
-    }
-
-    return result;
+    return buildResult(reg, writtenIndex);
   });
 
-  // 快取單筆結果並追蹤 key（供 clearCache 清除）
-  var cacheKey = 'query_' + idno;
   cache.put(cacheKey, JSON.stringify(results), CONFIG.CACHE_TTL);
   trackQueryKey(cacheKey);
   return results;
+}
+
+// 共用結果組合函式（抽出來避免兩個 query 函式重複）
+function buildResult(reg, writtenIndex) {
+  var dstngClean = (reg.dstng || '').trim();
+  var isExemptPractical = (dstngClean === 'B');
+  // 身分證顯示：一律僅顯示末 4 碼，形式為 "******XXXX"
+  // 即使記憶體中還有舊 CSV 的完整 idno，也絕不回傳到前端
+  var displayIdno = '******' + (reg.idno_last4 || '');
+  var result = {
+    studentName: reg.name,
+    idno: displayIdno,
+    certNumber: reg.aeno,
+    pno: reg.pno,
+    occupation: PNO_MAP[reg.pno] || reg.pno,
+    egr: reg.egr,
+    exemption: dstngClean,
+  };
+  if (!isExemptPractical) {
+    result.practicalDate = reg.opexdt;
+    result.practicalTime = reg.opextime;
+  }
+  var wr = writtenIndex[reg.aeno] || null;
+  if (wr && wr.exdate && wr.extime) {
+    result.writtenDate = wr.exdate;
+    result.writtenTime = wr.extime;
+    result.writtenRoom = wr.room || DEFAULT_WRITTEN_ROOM;
+    if (wr.distid) result.writtenSession = wr.distid;
+  } else if (!isExemptPractical && reg.opextime) {
+    var pTime = String(reg.opextime);
+    var isPracticalMorning = /^0[6-9]|^1[0-2]/.test(pTime);
+    result.writtenDate = reg.opexdt;
+    result.writtenTime = isPracticalMorning ? '13:20-15:00' : '10:20-12:00';
+    result.writtenRoom = DEFAULT_WRITTEN_ROOM;
+  }
+  return result;
 }
 
 // 追蹤所有 query_* cache key（存到 PropertiesService，資料量小）
@@ -272,6 +284,49 @@ function trackQueryKey(key) {
       props.setProperty('query_keys', JSON.stringify(set));
     }
   } catch (e) { /* 非關鍵錯誤，忽略 */ }
+}
+
+// ======== 管理功能 ========
+// 上傳/覆蓋 Drive 上的 CSV（呼叫前需驗證 DEBUG_TOKEN）
+function adminReplaceCsv(filename, content) {
+  if (!filename || !content) {
+    return jsonResponse({ success: false, error: '缺少 filename 或 content' });
+  }
+  // 白名單 — 只允許覆蓋這兩個檔名
+  var allowed = ['報檢資料.csv', '學科報檢資料.csv'];
+  if (allowed.indexOf(filename) < 0) {
+    return jsonResponse({ success: false, error: '檔名不在白名單內: ' + filename });
+  }
+  try {
+    var folder = DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
+    var iter = folder.getFilesByName(filename);
+    var file = null;
+    while (iter.hasNext()) {
+      file = iter.next();
+      break;
+    }
+    if (file) {
+      // 直接覆蓋內容（備份交由客戶端處理，減少 scope 需求）
+      file.setContent(content);
+    } else {
+      folder.createFile(filename, content, 'text/csv');
+    }
+    // 清查詢快取（因資料已變）
+    var cache = CacheService.getScriptCache();
+    var props = PropertiesService.getScriptProperties();
+    var keysJson = props.getProperty('query_keys');
+    var keys = keysJson ? JSON.parse(keysJson) : [];
+    keys.forEach(function (k) { try { cache.remove(k); } catch (e) {} });
+    props.setProperty('query_keys', '[]');
+    return jsonResponse({
+      success: true,
+      filename: filename,
+      bytes: content.length,
+      action: file ? 'replaced' : 'created'
+    });
+  } catch (err) {
+    return jsonResponse({ success: false, error: err.message || String(err) });
+  }
 }
 
 // ======== 資料載入 ========
@@ -299,7 +354,7 @@ function findLatestFile(keyword, ext, exclude) {
 
 function loadRegistrations() {
   // CacheService 值限制 100KB，報檢資料可能超過，改用 PropertiesService（9KB/key，分段）或乾脆不快取
-  // 這裡不快取整份資料；若要優化可改成按 IDNO 建立索引再分段快取
+  // 這裡不快取整份資料
   // 排除「學科」字樣，避免誤讀到學科報檢資料.csv
   var csvFile = findLatestFile('報檢資料', '.csv', '學科');
   if (!csvFile) throw new Error('找不到報檢資料 CSV（請用資料轉檔工具產生後上傳）');
@@ -317,9 +372,20 @@ function loadRegistrations() {
     for (var j = 0; j < fieldRow.length; j++) {
       row[fieldRow[j]] = rows[i][j];
     }
-    if (row.idno) {
-      // 清理關鍵欄位避免末尾空格影響 join
-      row.idno = String(row.idno).trim().toUpperCase();
+    // 相容新舊格式：
+    // - 新版 CSV：只有 idno_last4（裁切後 4 位數）
+    // - 舊版 CSV：有完整 idno（末 4 碼會即時裁切）
+    if (row.idno_last4) {
+      row.idno_last4 = String(row.idno_last4).trim().padStart(4, '0').slice(-4);
+      if (row.aeno) row.aeno = String(row.aeno).trim();
+      if (row.dstng) row.dstng = String(row.dstng).trim().toUpperCase();
+      data.push(row);
+    } else if (row.idno) {
+      // 舊格式：保留末 4 碼供比對，其他欄位照常使用
+      // 注意：記憶體中仍存完整 idno 供 buildResult 遮蔽使用，但不會回傳到前端
+      var fullIdno = String(row.idno).trim().toUpperCase();
+      row.idno = fullIdno;
+      row.idno_last4 = fullIdno.slice(-4);
       if (row.aeno) row.aeno = String(row.aeno).trim();
       if (row.dstng) row.dstng = String(row.dstng).trim().toUpperCase();
       data.push(row);
@@ -358,26 +424,6 @@ function loadWrittenIndex() {
 }
 
 // ======== 工具函式 ========
-function validateIdno(idno) {
-  if (!idno || idno.length !== 10) return false;
-  if (!/^[A-Z][12]\d{8}$/.test(idno)) return false;
-  // 驗證檢查碼（標準字母表順序對應）
-  var letterMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  var letterValues = [10, 11, 12, 13, 14, 15, 16, 17, 34, 18, 19, 20, 21, 22, 35, 23, 24, 25, 26, 27, 28, 29, 32, 30, 31, 33];
-  var idx = letterMap.indexOf(idno.charAt(0));
-  if (idx < 0) return false;
-  var n = letterValues[idx];
-  var sum = Math.floor(n / 10) + (n % 10) * 9;
-  for (var i = 1; i < 9; i++) sum += parseInt(idno.charAt(i), 10) * (9 - i);
-  sum += parseInt(idno.charAt(9), 10);
-  return sum % 10 === 0;
-}
-
-function maskIdno(idno) {
-  if (!idno || idno.length !== 10) return idno;
-  return idno.substring(0, 2) + '****' + idno.substring(6);
-}
-
 function checkRateLimit(idno) {
   var cache = CacheService.getScriptCache();
 
@@ -403,7 +449,7 @@ function jsonResponse(obj) {
 
 // ======== 手動測試用 ========
 function testQuery() {
-  var result = queryByIdno('A123456789');
+  var result = queryByNameAndLast4('王小明', '6789');
   Logger.log(JSON.stringify(result, null, 2));
 }
 

@@ -97,7 +97,8 @@
 
   var form = document.getElementById('examQueryForm');
   if (!form) return;
-  var idnoInput = document.getElementById('eqIdno');
+  var nameInput = document.getElementById('eqName');
+  var last4Input = document.getElementById('eqLast4');
   var btn = document.getElementById('eqBtn');
   var btnText = document.getElementById('eqBtnText');
   var errDiv = document.getElementById('eqError');
@@ -110,36 +111,36 @@
   var noticesArrow = document.getElementById('eqNoticesArrow');
 
   var cache = new Map();
-  // 隱私保護：身分證號只存在 sessionStorage（tab 關閉即清除），
-  // 且不使用 localStorage（跨 session 永久保留，公用電腦會洩漏前人資料）
+  // 隱私保護：只在 sessionStorage（tab 關閉即清除），不用 localStorage
   var HISTORY_KEY = 'exam_query_history';
-  // 若 localStorage 有舊資料，清除（相容舊版本遺留）
   try { localStorage.removeItem(HISTORY_KEY); } catch (e) {}
   var history = loadHistory();
   var searching = false;
 
   renderHistory();
-  idnoInput.focus();
+  nameInput.focus();
 
-  // 自動大寫英文字母
-  idnoInput.addEventListener('input', function (e) {
-    var v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // 末 4 碼限數字
+  last4Input.addEventListener('input', function (e) {
+    var v = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
     if (v !== e.target.value) e.target.value = v;
   });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     if (searching) return;
-    var idno = idnoInput.value.trim().toUpperCase();
-    if (!validate(idno)) return;
+    var name = nameInput.value.trim();
+    var last4 = last4Input.value.trim();
+    if (!validate(name, last4)) return;
     hideError();
-    showConfirmBeforeQuery(function () { doSearch(idno); });
+    showConfirmBeforeQuery(function () { doSearch(name, last4); });
   });
 
   historyTags.addEventListener('click', function (e) {
     var tag = e.target.closest('.history-tag');
     if (tag) {
-      idnoInput.value = tag.dataset.idno || tag.textContent;
+      nameInput.value = tag.dataset.name || '';
+      last4Input.value = tag.dataset.last4 || '';
       form.dispatchEvent(new Event('submit'));
     }
   });
@@ -172,47 +173,25 @@
     okBtn.focus();
   }
 
-  function validate(idno) {
-    if (!idno) { showError('請輸入身分證字號'); return false; }
-    if (idno.length !== 10) { showError('身分證字號必須為 10 碼'); return false; }
-    if (!/^[A-Z][12]\d{8}$/.test(idno)) {
-      showError('格式錯誤：1 個英文字母 + 性別碼(1或2) + 8 個數字');
-      return false;
-    }
-    if (!validateROC(idno)) {
-      showError('身分證字號檢查碼不正確');
-      return false;
-    }
+  function validate(name, last4) {
+    if (!name) { showError('請輸入姓名'); return false; }
+    if (name.length < 2 || name.length > 20) { showError('姓名長度應為 2-20 字元'); return false; }
+    if (!last4) { showError('請輸入身分證末 4 碼'); return false; }
+    if (!/^\d{4}$/.test(last4)) { showError('末 4 碼應為 4 位數字'); return false; }
     return true;
-  }
-
-  // 台灣身分證字號檢查碼驗證
-  // 字母對應值（標準字母表順序）：
-  // A=10, B=11, C=12, D=13, E=14, F=15, G=16, H=17, I=34, J=18, K=19,
-  // L=20, M=21, N=22, O=35, P=23, Q=24, R=25, S=26, T=27, U=28,
-  // V=29, W=32, X=30, Y=31, Z=33
-  function validateROC(id) {
-    var letterMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    var letterValues = [10,11,12,13,14,15,16,17,34,18,19,20,21,22,35,23,24,25,26,27,28,29,32,30,31,33];
-    var idx = letterMap.indexOf(id.charAt(0));
-    if (idx < 0) return false;
-    var n = letterValues[idx];
-    var sum = Math.floor(n / 10) + (n % 10) * 9;
-    for (var i = 1; i < 9; i++) sum += parseInt(id.charAt(i), 10) * (9 - i);
-    sum += parseInt(id.charAt(9), 10);
-    return sum % 10 === 0;
   }
 
   function showError(msg) { errText.textContent = msg; errDiv.classList.add('show'); }
   function hideError() { errDiv.classList.remove('show'); }
 
-  async function doSearch(idno) {
+  async function doSearch(name, last4) {
     searching = true;
     btn.disabled = true;
     btnText.textContent = '查詢中...';
     resultsDiv.textContent = '';
 
-    var cached = cache.get(idno);
+    var cacheKey = name + '|' + last4;
+    var cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       renderResults(cached.data);
       showToast('使用快取資料');
@@ -226,7 +205,7 @@
       var resp = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'examQuery', idno: idno, exactMatch: true }),
+        body: JSON.stringify({ action: 'examQuery', name: name, last4: last4, exactMatch: true }),
         signal: controller.signal
       });
       clearTimeout(timer);
@@ -235,9 +214,9 @@
       var data = await resp.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        cache.set(idno, { data: data, ts: Date.now() });
+        cache.set(cacheKey, { data: data, ts: Date.now() });
         renderResults(data);
-        addHistory(idno);
+        addHistory(name, last4);
         showToast('查詢成功，找到 ' + data.data.length + ' 筆');
       } else {
         renderNoResult();
@@ -474,15 +453,16 @@
     catch (e) { return []; }
   }
 
-  function addHistory(idno) {
-    history = history.filter(function (h) { return h !== idno; });
-    history.unshift(idno);
+  function addHistory(name, last4) {
+    var key = name + '|' + last4;
+    history = history.filter(function (h) { return (h.name + '|' + h.last4) !== key; });
+    history.unshift({ name: name, last4: last4 });
     history = history.slice(0, MAX_HISTORY);
     try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) { }
     renderHistory();
   }
 
-  // 身分證遮罩顯示：A1****6789
+  // 身分證遮罩顯示：A1****6789（供結果頁顯示使用）
   function maskIdno(idno) {
     if (!idno || idno.length !== 10) return idno;
     return idno.substring(0, 2) + '****' + idno.substring(6);
@@ -492,11 +472,14 @@
     if (!history.length) { historyDiv.style.display = 'none'; return; }
     historyDiv.style.display = '';
     historyTags.textContent = '';
-    history.forEach(function (idno) {
+    history.forEach(function (h) {
+      // 相容舊格式（字串 idno）
+      if (typeof h === 'string') return;
       var tag = document.createElement('button');
       tag.className = 'history-tag';
-      tag.textContent = maskIdno(idno);
-      tag.dataset.idno = idno;
+      tag.textContent = h.name + ' (***' + h.last4 + ')';
+      tag.dataset.name = h.name;
+      tag.dataset.last4 = h.last4;
       tag.type = 'button';
       historyTags.appendChild(tag);
     });

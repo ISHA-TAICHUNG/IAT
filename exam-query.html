@@ -43,16 +43,25 @@
     <div class="query-card" style="margin-top:20px">
       <h2 class="query-title">🛠️ 即測即評測驗日期查詢</h2>
       <p class="query-desc">輸入身分證字號，查詢學科/術科測驗日期、時間、座號及考場</p>
-      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;font-size:0.78rem;color:#1e40af;margin-bottom:16px">
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;font-size:0.78rem;color:#1e40af;margin-bottom:8px">
         <span>🎓</span> 僅提供職安衛龍井試場即測即評檢定查詢
       </div>
+      <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:0.78rem;color:#92400e;margin-bottom:16px;line-height:1.5">
+        <span>⚠️</span>
+        <div><strong>試行中之便民服務</strong>：本查詢系統為台中訓練中心試辦之便民工具，正式測驗資訊仍以紙本准考證為準。本系統仍在報備流程中，功能可能隨時調整或暫停。</div>
+      </div>
       <form id="examQueryForm">
-        <label class="query-label" for="eqIdno">身分證字號 <span style="color:var(--danger)">*</span></label>
-        <input type="text" id="eqIdno" class="query-input" placeholder="請輸入身分證字號，例如：A123456789" required minlength="10" maxlength="10" autocomplete="off" autocapitalize="characters" inputmode="text" />
-        <div class="query-help">1 個英文字母 + 9 個數字，共 10 碼</div>
+        <label class="query-label" for="eqName">姓名 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="eqName" class="query-input" placeholder="請輸入完整姓名，例如：王小明" required minlength="2" maxlength="20" autocomplete="name" />
+        <div class="query-help">請輸入 2-20 字元的完整中文姓名</div>
+
+        <label class="query-label" for="eqLast4" style="margin-top:12px">身分證末 4 碼 <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="eqLast4" class="query-input" placeholder="請輸入身分證最後 4 碼數字" required minlength="4" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]{4}" />
+        <div class="query-help">身分證字號最後 4 位數字（例：身分證 A123456789 則輸入 6789）</div>
+
         <div class="query-error" id="eqError"><span>⚠</span> <span id="eqErrorText"></span></div>
         <div class="tip-box tip-info" style="margin-top:10px;font-size:0.82rem">
-          🔒 身分證字號僅用於比對查詢，不會儲存或傳輸至其他系統。
+          🔒 為降低個資風險，本系統已改為「姓名+身分證末 4 碼」查詢，不再要求完整身分證字號。查詢資料透過 Google Cloud 服務處理，查詢完成後立即於系統中移除。
         </div>
         <button type="submit" class="query-btn" id="eqBtn" style="margin-top:16px">
           <span id="eqBtnText">🔍 查詢測驗資訊</span>
@@ -178,7 +187,7 @@
 
   <script src="js/config.js?v=20260422a"></script>
   <script src="js/utils.js?v=20260422a"></script>
-  <script src="js/exam-query.js?v=20260422a"></script>
+  <script src="js/exam-query.js?v=20260423a"></script>
 </body>
 
 </html>

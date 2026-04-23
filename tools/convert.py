@@ -16,8 +16,12 @@ from pathlib import Path
 
 # ====== 資安設定：xlsx 報檢資料（術科）只輸出這 8 個欄位 ======
 # 其他個資（地址、電話、email、生日、身障類別等）一律不輸出
+#
+# 重要更新（2026-04-23）：身分證完整字號不再寫入 CSV。
+# IDNO 欄位會被轉成 IDNO_LAST4（只保留末 4 碼），大幅降低個資風險。
+# 這樣即使 Drive 資料外洩，攻擊者也拿不到完整身分證。
 ALLOWED_XLSX_FIELDS = {
-    'IDNO',       # 身分證號（查詢 key）
+    'IDNO',       # 身分證號（會自動裁切為末 4 碼 → IDNO_LAST4）
     'NAME',       # 姓名
     'AENO',       # 准考證號
     'PNO',        # 職類代碼
@@ -25,6 +29,14 @@ ALLOWED_XLSX_FIELDS = {
     'DSTNG',      # 免試別
     'OPEXDT',     # 術科測試日期
     'OPEXTIME',   # 術科測試時間
+}
+
+# 身分證欄位裁切設定：原欄位名 → 新欄位名 + 裁切函式
+IDNO_TRANSFORM = {
+    'source': 'IDNO',
+    'zh_new': '身分證末4碼',
+    'en_new': 'IDNO_LAST4',
+    'transform': lambda v: str(v).strip()[-4:] if v else '',
 }
 
 # ====== 學科報檢資料：只保留公開欄位（電話/MAIL 不輸出）======
@@ -107,30 +119,55 @@ def convert_xlsx(src_path, out_dir):
 
     # 找出允許欄位的索引
     keep_idx = []
+    idno_idx = -1  # 記錄 IDNO 欄位位置（之後要裁切）
     for i, field in enumerate(en_fields):
         if field and str(field).strip().upper() in ALLOWED_XLSX_FIELDS:
             keep_idx.append(i)
+            if str(field).strip().upper() == IDNO_TRANSFORM['source']:
+                idno_idx = i
 
     if not keep_idx:
         print(f"⚠️  {src.name}: 找不到預期的欄位")
         return False, 0
+
+    # 準備輸出用的標題（IDNO → 身分證末4碼）
+    out_zh_headers = []
+    out_en_fields = []
+    for i in keep_idx:
+        if i == idno_idx:
+            out_zh_headers.append(IDNO_TRANSFORM['zh_new'])
+            out_en_fields.append(IDNO_TRANSFORM['en_new'])
+        else:
+            out_zh_headers.append(str(zh_headers[i]) if zh_headers[i] else '')
+            out_en_fields.append(str(en_fields[i]) if en_fields[i] else '')
 
     # 寫入 CSV
     count = 0
     with open(out_path, 'w', newline='', encoding='utf-8-sig') as f:
         w = csv.writer(f)
         # 中文標題行
-        w.writerow([zh_headers[i] for i in keep_idx])
+        w.writerow(out_zh_headers)
         # 英文欄位名行（GAS 要用）
-        w.writerow([en_fields[i] for i in keep_idx])
+        w.writerow(out_en_fields)
         # 資料行
         for row in rows[2:]:
             if not row or not row[keep_idx[0]]:  # 無資料或無身分證
                 continue
-            w.writerow([str(row[i]) if row[i] is not None else '' for i in keep_idx])
+            out_row = []
+            for i in keep_idx:
+                val = row[i] if i < len(row) else None
+                if i == idno_idx:
+                    # 身分證 → 只留末 4 碼
+                    out_row.append(IDNO_TRANSFORM['transform'](val))
+                else:
+                    out_row.append(str(val) if val is not None else '')
+            w.writerow(out_row)
             count += 1
 
-    print(f"✅ {src.name} → {out_name}（{count} 筆，{len(keep_idx)} 個欄位，個資已過濾）")
+    if idno_idx >= 0:
+        print(f"✅ {src.name} → {out_name}（{count} 筆，{len(keep_idx)} 個欄位，🔒 身分證已裁切為末 4 碼）")
+    else:
+        print(f"✅ {src.name} → {out_name}（{count} 筆，{len(keep_idx)} 個欄位）")
     return True, count
 
 
