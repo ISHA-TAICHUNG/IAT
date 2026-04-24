@@ -256,12 +256,13 @@
   }
 
   function getExamMode(dstng, writtenTime, practicalTime) {
-    if (dstng === 'B' || dstng === 'b') return { code: 'B', label: '🅰️ 免術科', desc: '僅考學科' };
+    // letter = 測驗方式字母徽章（A/B/C），title = 模式文字，desc = 說明
+    if (dstng === 'B' || dstng === 'b') return { code: 'B', letter: 'A', title: '免術科', desc: '僅考學科' };
     var wMorn = writtenTime && /^0[6-9]|^1[0-2]/.test(writtenTime);
     var pMorn = practicalTime && /^0[6-9]|^1[0-2]/.test(practicalTime);
-    if (wMorn && !pMorn) return { code: 'W_P', label: '🅱️ 上午學科 / 下午術科', desc: '上午學科，下午術科' };
-    if (pMorn && !wMorn) return { code: 'P_W', label: '🅲 上午術科 / 下午學科', desc: '上午術科，下午學科' };
-    return { code: '-', label: '📋 測驗方式', desc: '依查詢結果顯示' };
+    if (wMorn && !pMorn) return { code: 'W_P', letter: 'B', title: '上午學科 / 下午術科', desc: '上午學科，下午術科' };
+    if (pMorn && !wMorn) return { code: 'P_W', letter: 'C', title: '上午術科 / 下午學科', desc: '上午術科，下午學科' };
+    return { code: '-', letter: '', title: '測驗方式', desc: '依查詢結果顯示' };
   }
 
   function formatROCDate(s) {
@@ -301,13 +302,21 @@
       var mode = getExamMode(item.exemption || item.dstng, item.writtenTime, item.practicalTime);
       var modeBadge = document.createElement('div');
       modeBadge.style.cssText = 'margin:12px 24px 8px;padding:10px 16px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fed7aa;border-radius:10px;display:flex;align-items:center;gap:10px;font-weight:600;color:#9a3412';
-      var modeIcon = document.createElement('span');
-      modeIcon.style.cssText = 'font-size:1.2rem';
-      modeIcon.textContent = mode.label.split(' ')[0];
+      // 使用 .mode-letter 字母徽章（A/B/C），若無 letter 則回退為 📋 圖示
+      var modeIcon;
+      if (mode.letter) {
+        modeIcon = document.createElement('span');
+        modeIcon.className = 'mode-letter';
+        modeIcon.textContent = mode.letter;
+      } else {
+        modeIcon = document.createElement('span');
+        modeIcon.style.cssText = 'font-size:1.2rem';
+        modeIcon.textContent = '📋';
+      }
       var modeText = document.createElement('div');
       var modeTitle = document.createElement('div');
       modeTitle.style.cssText = 'font-size:0.95rem';
-      modeTitle.textContent = mode.label.replace(/^[^\s]+\s/, '');
+      modeTitle.textContent = mode.title;
       var modeDesc = document.createElement('div');
       modeDesc.style.cssText = 'font-size:0.78rem;color:#c2410c;font-weight:500;margin-top:2px';
       modeDesc.textContent = mode.desc;
@@ -385,7 +394,7 @@
       var tipDiv = document.createElement('div');
       tipDiv.className = 'tip-box tip-info';
       tipDiv.style.margin = '0 24px 24px';
-      tipDiv.textContent = '💡 請於測驗前 30 分鐘抵達龍井試場辦理報到（臺中市龍井區中社五街 12 號）。';
+      tipDiv.textContent = '💡 建議測驗前 30 分鐘抵達龍井試場辦理報到（臺中市龍井區中社五街 12 號）。';
       card.appendChild(tipDiv);
 
       resultsDiv.appendChild(card);

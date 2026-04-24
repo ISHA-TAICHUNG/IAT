@@ -8,8 +8,8 @@
   <meta name="description" content="查詢即測即評技能檢定測驗日期、學科術科時間、考場" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260421o" />
-  <link rel="stylesheet" href="css/query.css?v=20260421o" />
+  <link rel="stylesheet" href="css/style.css?v=20260424c" />
+  <link rel="stylesheet" href="css/query.css?v=20260424c" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -44,7 +44,7 @@
       <h2 class="query-title">🛠️ 即測即評測驗日期查詢</h2>
       <p class="query-desc">輸入身分證字號，查詢學科/術科測驗日期、時間、座號及考場</p>
       <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;font-size:0.78rem;color:#1e40af;margin-bottom:8px">
-        <span>🎓</span> 僅提供職安衛龍井試場即測即評檢定查詢
+        <span>🎓</span> 僅提供即測即評龍井試場檢定查詢
       </div>
       <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:0.78rem;color:#92400e;margin-bottom:16px;line-height:1.5">
         <span>⚠️</span>
@@ -80,17 +80,17 @@
       <h2>📖 即測即評測驗方式</h2>
       <div class="contact-grid">
         <div class="contact-card">
-          <h4>🅰️ 免術科</h4>
+          <h4><span class="mode-letter">A</span>免術科</h4>
           <div class="addr" style="color:var(--gray-600)">僅考學科，免試別為「B」</div>
           <div class="addr" style="font-size:0.82rem;margin-top:4px">適用已通過術科之考生</div>
         </div>
         <div class="contact-card">
-          <h4>🅱️ 上午學科 / 下午術科</h4>
+          <h4><span class="mode-letter">B</span>上午學科 / 下午術科</h4>
           <div class="addr" style="color:var(--gray-600)">上午 09:50 開始學科測驗</div>
           <div class="addr" style="font-size:0.82rem;margin-top:4px">學科結束後下午接續術科</div>
         </div>
         <div class="contact-card">
-          <h4>🅲 上午術科 / 下午學科</h4>
+          <h4><span class="mode-letter">C</span>上午術科 / 下午學科</h4>
           <div class="addr" style="color:var(--gray-600)">上午 08:30 開始術科測驗</div>
           <div class="addr" style="font-size:0.82rem;margin-top:4px">術科結束後下午接續學科</div>
         </div>
@@ -105,7 +105,7 @@
       <h2>🏢 試場資訊（龍井試場）</h2>
       <div class="contact-grid">
         <a href="https://maps.app.goo.gl/nVrARbyT7Bjvi6TY7" target="_blank" rel="noopener" class="contact-card contact-link">
-          <h4>🏢 職安衛龍井試場</h4>
+          <h4>🏢 即測即評龍井試場</h4>
           <a href="tel:04-26336999" onclick="event.stopPropagation()" style="display:block;margin:4px 0;font-weight:600">📞 04-2633-6999</a>
           <div class="addr">臺中市龍井區中社五街12號</div>
           <div class="addr" style="font-size:0.82rem;color:var(--gray-500);margin-top:4px">龍井教室 2 樓即測即評學科電腦教室</div>
@@ -173,7 +173,7 @@
 
   <script src="js/config.js?v=20260422a"></script>
   <script src="js/utils.js?v=20260422a"></script>
-  <script src="js/exam-query.js?v=20260424b"></script>
+  <script src="js/exam-query.js?v=20260424c"></script>
 </body>
 
 </html>
