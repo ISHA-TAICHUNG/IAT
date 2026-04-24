@@ -48,7 +48,7 @@
       </div>
       <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:0.78rem;color:#92400e;margin-bottom:16px;line-height:1.5">
         <span>⚠️</span>
-        <div><strong>試行中之便民服務</strong>：本查詢系統為台中訓練中心試辦之便民工具，正式測驗資訊仍以紙本准考證為準。本系統仍在報備流程中，功能可能隨時調整或暫停。</div>
+        <div><strong>試行中之便民服務</strong>：本查詢系統為台中訓練中心試辦之便民工具，正式測驗資訊仍以紙本准考證為準。</div>
       </div>
       <form id="examQueryForm">
         <label class="query-label" for="eqName">姓名 <span style="color:var(--danger)">*</span></label>
@@ -60,9 +60,6 @@
         <div class="query-help">身分證字號最後 4 位數字（例：身分證 A123456789 則輸入 6789）</div>
 
         <div class="query-error" id="eqError"><span>⚠</span> <span id="eqErrorText"></span></div>
-        <div class="tip-box tip-info" style="margin-top:10px;font-size:0.82rem">
-          🔒 為降低個資風險，本系統已改為「姓名+身分證末 4 碼」查詢，不再要求完整身分證字號。查詢資料透過 Google Cloud 服務處理，查詢完成後立即於系統中移除。
-        </div>
         <button type="submit" class="query-btn" id="eqBtn" style="margin-top:16px">
           <span id="eqBtnText">🔍 查詢測驗資訊</span>
         </button>
@@ -187,7 +184,7 @@
 
   <script src="js/config.js?v=20260422a"></script>
   <script src="js/utils.js?v=20260422a"></script>
-  <script src="js/exam-query.js?v=20260423a"></script>
+  <script src="js/exam-query.js?v=20260424a"></script>
 </body>
 
 </html>

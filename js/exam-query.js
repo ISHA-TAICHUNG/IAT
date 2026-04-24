@@ -320,7 +320,6 @@
       var grid = document.createElement('div');
       grid.className = 'result-grid';
 
-      var cert = item.certNumber || item.aeno || '';
       var occ = getOccupation(item.pno, item.egr || item.level);
 
       // 推算當天最早場次的報到時間（上午場 7:30-7:40、下午場 12:50）
@@ -329,20 +328,32 @@
       // 只針對「測驗日期」與「報到時間」強調（hl:true），其他欄位維持正常
       var fields = [
         { label: '職類 / 級別', value: occ, icon: '📚', hl: false },
-        { label: '准考證號', value: cert ? String(cert).trim() : '-', icon: '🎫', hl: false },
         { label: '報到時間', value: checkinTime, icon: '🚶', hl: true },
       ];
 
-      // 學科：所有人都考（含免術科者）
-      fields.push({ label: '學科測驗日期', value: formatROCDate(item.writtenDate) || '待公告', icon: '📅', hl: true });
+      // 學科/術科同一天 → 合併顯示為「學術科測驗日期」
+      // 免術科者（mode.code === 'B'）仍顯示「學科測驗日期」
+      if (mode.code === 'B') {
+        fields.push({ label: '學科測驗日期', value: formatROCDate(item.writtenDate) || '待公告', icon: '📅', hl: true });
+      } else {
+        // 學科與術科日期一致時合併顯示；少見的不一致情況仍分別列出
+        var wDate = item.writtenDate || '';
+        var pDate = item.practicalDate || '';
+        if (wDate && pDate && String(wDate) === String(pDate)) {
+          fields.push({ label: '學術科測驗日期', value: formatROCDate(wDate), icon: '📅', hl: true });
+        } else {
+          fields.push({ label: '學科測驗日期', value: formatROCDate(wDate) || '待公告', icon: '📅', hl: true });
+          fields.push({ label: '術科測驗日期', value: formatROCDate(pDate) || '待公告', icon: '📅', hl: true });
+        }
+      }
+
+      // 學科時間/場次/座號（教室已移除，因考生多會看紙本准考證）
       fields.push({ label: '學科測驗時間', value: item.writtenTime || '待公告', icon: '⏰', hl: false });
-      fields.push({ label: '學科測驗教室', value: item.writtenRoom || '龍井教室 2 樓即測即評學科電腦教室', icon: '🏫', hl: false });
       if (item.writtenSession) fields.push({ label: '學科場次', value: item.writtenSession, icon: '🎟️', hl: false });
       if (item.writtenSeat) fields.push({ label: '學科座號', value: item.writtenSeat, icon: '💺', hl: false });
 
-      // 術科：免術科者 (mode.code === 'B') 不顯示術科
+      // 術科時間/場地/座號（免術科者略過）
       if (mode.code !== 'B') {
-        fields.push({ label: '術科測驗日期', value: formatROCDate(item.practicalDate) || '待公告', icon: '📅', hl: true });
         fields.push({ label: '術科測驗時間', value: item.practicalTime || '待公告', icon: '⏰', hl: false });
         if (item.practicalRoom) fields.push({ label: '術科測驗場地', value: item.practicalRoom, icon: '🛠️', hl: false });
         if (item.practicalSeat) fields.push({ label: '術科座號', value: item.practicalSeat, icon: '💺', hl: false });
