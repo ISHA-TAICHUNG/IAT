@@ -347,9 +347,8 @@
         }
       }
 
-      // 學科時間/場次/座號（教室已移除，因考生多會看紙本准考證）
+      // 學科時間/座號（教室、場次已移除，因考生多會看紙本准考證）
       fields.push({ label: '學科測驗時間', value: item.writtenTime || '待公告', icon: '⏰', hl: false });
-      if (item.writtenSession) fields.push({ label: '學科場次', value: item.writtenSession, icon: '🎟️', hl: false });
       if (item.writtenSeat) fields.push({ label: '學科座號', value: item.writtenSeat, icon: '💺', hl: false });
 
       // 術科時間/場地/座號（免術科者略過）
