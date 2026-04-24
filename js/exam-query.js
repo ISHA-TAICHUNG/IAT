@@ -238,25 +238,40 @@
   }
 
   // 依當天最早場次推算報到時間
-  // 規則：報到時間 = 最早測驗時間 - 30 分鐘
+  // 規則：
+  //   - 若最早場次為「術科」→ 報到 = 術科開始前 60 分鐘（需做器材準備/人員清點）
+  //   - 若最早場次為「學科」→ 報到 = 學科開始前 30 分鐘
   //   例：學科 10:20 開始 → 9:50
-  //       術科  8:30 開始 → 8:00
-  //       下午 13:30 開始 → 1:00
+  //       術科  8:30 開始 → 7:30
+  //       下午 13:30 開始（學科）→ 1:00
   function computeCheckinTime(mode, writtenTime, practicalTime) {
     var earliest = null;
+    var earliestIsPractical = false;
+
     if (mode.code === 'B') {
+      // 免術科：只考學科
       earliest = writtenTime;
+      earliestIsPractical = false;
+    } else if (writtenTime && practicalTime) {
+      var cmp = String(writtenTime).localeCompare(String(practicalTime));
+      if (cmp <= 0) {
+        earliest = writtenTime;
+        earliestIsPractical = false;
+      } else {
+        earliest = practicalTime;
+        earliestIsPractical = true;
+      }
     } else {
-      var times = [writtenTime, practicalTime].filter(Boolean);
-      times.sort(function (a, b) { return String(a).localeCompare(String(b)); });
-      earliest = times[0];
+      earliest = practicalTime || writtenTime;
+      earliestIsPractical = !!practicalTime && !writtenTime;
     }
     if (!earliest) return '—';
 
     var m = String(earliest).match(/(\d{1,2}):(\d{2})/);
     if (!m) return '—';
     var startMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-    var checkin = startMin - 30;
+    var offset = earliestIsPractical ? 60 : 30;  // 術科提前 60 分、學科提前 30 分
+    var checkin = startMin - offset;
     if (checkin < 0) return '—';
 
     var h = Math.floor(checkin / 60);
