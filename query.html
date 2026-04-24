@@ -55,9 +55,6 @@
         <input type="text" id="qName" class="query-input" placeholder="請輸入完整姓名，例如：王小明" required minlength="2" maxlength="20" autocomplete="name" />
         <div class="query-help">請輸入 2-20 字元的完整中文姓名</div>
         <div class="query-error" id="qError"><span>⚠</span> <span id="qErrorText"></span></div>
-        <div class="tip-box tip-info" style="margin-top:10px;font-size:0.82rem">
-          🔒 姓名僅用於比對查詢，查詢完成後立即於系統中移除，不另作其他用途。資料比對透過 Google Cloud 服務處理。
-        </div>
         <button type="submit" class="query-btn" id="qBtn" style="margin-top:16px">
           <span id="qBtnText">🔍 查詢測驗資訊</span>
         </button>
@@ -73,45 +70,30 @@
     <!-- 結果區 -->
     <div id="qResults"></div>
 
-    <!-- 聯絡資訊 -->
+    <!-- 試場資訊（聯絡 + 地點合併） -->
     <div class="info-section">
-      <h2>📞 聯絡資訊及服務時間</h2>
+      <h2>🏢 試場資訊</h2>
       <div class="contact-grid">
-        <div class="contact-card">
+        <a href="https://maps.app.goo.gl/kev43J4jJjkAryXG7" target="_blank" rel="noopener" class="contact-card contact-link">
           <h4>🎓 忠明教室</h4>
-          <a href="tel:04-22608999">04-2260-8999</a>
+          <a href="tel:04-22608999" onclick="event.stopPropagation()" style="display:block;margin:4px 0;font-weight:600">📞 04-2260-8999</a>
           <div class="addr">臺中市南區忠明南路758號3樓</div>
-        </div>
-        <div class="contact-card">
+          <div class="map-link">🔗 查看 Google 地圖</div>
+        </a>
+        <a href="https://maps.app.goo.gl/nVrARbyT7Bjvi6TY7" target="_blank" rel="noopener" class="contact-card contact-link">
           <h4>🏢 職安衛龍井試場</h4>
-          <a href="tel:04-26336999">04-2633-6999</a>
+          <a href="tel:04-26336999" onclick="event.stopPropagation()" style="display:block;margin:4px 0;font-weight:600">📞 04-2633-6999</a>
           <div class="addr">臺中市龍井區中社五街12號</div>
-        </div>
+          <div class="map-link">🔗 查看 Google 地圖</div>
+        </a>
       </div>
       <div style="font-size:0.88rem;color:var(--gray-500);margin:12px 0">
-        服務時間：週一至週五 09:00-12:00、13:30-16:30（例假日休息）
+        🕘 服務時間：週一至週五 09:00-12:00、13:30-16:30（例假日休息）
       </div>
       <div class="tip-box tip-info">
         💡 如查詢不到資料，可能測驗資訊尚未發布（通常開考前 10 個工作天），請直接致電確認。
       </div>
-    </div>
-
-    <!-- 測驗地點 -->
-    <div class="info-section">
-      <h2>📍 測驗地點</h2>
-      <div class="contact-grid">
-        <a href="https://maps.app.goo.gl/nVrARbyT7Bjvi6TY7" target="_blank" rel="noopener" class="contact-card contact-link">
-          <h4>🏢 職安衛龍井試場</h4>
-          <div class="addr">臺中市龍井區中社五街12號</div>
-          <div class="map-link">🔗 查看 Google 地圖</div>
-        </a>
-        <a href="https://maps.app.goo.gl/kev43J4jJjkAryXG7" target="_blank" rel="noopener" class="contact-card contact-link">
-          <h4>🎓 忠明教室</h4>
-          <div class="addr">臺中市南區忠明南路758號3樓</div>
-          <div class="map-link">🔗 查看 Google 地圖</div>
-        </a>
-      </div>
-      <div class="tip-box tip-warn" style="margin-top:12px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 35 分鐘抵達報到。</div>
+      <div class="tip-box tip-warn" style="margin-top:8px">⚠️ 請依查詢結果的「測驗教室」前往正確地點，建議提前 35 分鐘抵達報到。</div>
     </div>
 
     <!-- 注意事項 -->
