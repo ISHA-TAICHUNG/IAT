@@ -237,22 +237,42 @@
     btnText.textContent = '🔍 查詢測驗資訊';
   }
 
-  // 依當天最早場次時間推算報到時間
-  // 上午場（< 12:00）→ 7:30 ~ 7:40；下午場 → 12:50
+  // 依當天最早場次推算報到時間
+  // 規則：報到時間 = 最早測驗時間 ─ 30 分鐘 起（10 分鐘範圍）
+  //   例：學科 10:20 開始 → 報到 9:50 ~ 10:00
+  //       術科  8:30 開始 → 報到 8:00 ~ 8:10
+  //       下午 13:30 開始 → 中午 13:00 ~ 13:10
   function computeCheckinTime(mode, writtenTime, practicalTime) {
     var earliest = null;
     if (mode.code === 'B') {
-      // 免術科只考學科
       earliest = writtenTime;
     } else {
-      // 取學科、術科中較早的開始時間
       var times = [writtenTime, practicalTime].filter(Boolean);
       times.sort(function (a, b) { return String(a).localeCompare(String(b)); });
       earliest = times[0];
     }
     if (!earliest) return '—';
-    var isMorning = /^0[6-9]|^1[0-1]/.test(String(earliest));
-    return isMorning ? '上午 7:30 ~ 7:40' : '中午 12:50';
+
+    // 取範圍中的開始時間（格式如 "10:20-12:00" 或 "10:20"）
+    var m = String(earliest).match(/(\d{1,2}):(\d{2})/);
+    if (!m) return '—';
+    var startMin = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+
+    // 報到開始 = 測驗開始前 30 分鐘；報到截止 = 測驗開始前 20 分鐘
+    var fromMin = startMin - 30;
+    var toMin = startMin - 20;
+    if (fromMin < 0) return '—';
+
+    var prefix = fromMin < 12 * 60 ? '上午' :
+                 fromMin < 13 * 60 ? '中午' :
+                 fromMin < 18 * 60 ? '下午' : '晚上';
+    var fmt = function (total) {
+      var h = Math.floor(total / 60);
+      var mm = total % 60;
+      var h12 = h > 12 ? h - 12 : h; // 13 → 1, 10 → 10, 0 → 0
+      return h12 + ':' + (mm < 10 ? '0' + mm : mm);
+    };
+    return prefix + ' ' + fmt(fromMin) + ' ~ ' + fmt(toMin);
   }
 
   function getExamMode(dstng, writtenTime, practicalTime) {
