@@ -10,26 +10,12 @@ let catName = "";
 let current = 0;
 let answers = [];      // answers[i] = { chosen: number|array|null, hinted: bool }
 
-// 複選題輔助：判斷答對 & 取得正確答案索引陣列
-function getAnswerArr(q) {
-    return Array.isArray(q.answer) ? q.answer.slice().sort() : [q.answer];
-}
-function getChosenArr(chosen) {
-    if (chosen === null || chosen === undefined) return [];
-    return Array.isArray(chosen) ? chosen.slice().sort() : [chosen];
-}
-function isAnswerCorrect(q, chosen) {
-    if (chosen === null || chosen === undefined) return false;
-    const a = getAnswerArr(q);
-    const c = getChosenArr(chosen);
-    if (a.length !== c.length) return false;
-    for (let i = 0; i < a.length; i++) if (a[i] !== c[i]) return false;
-    return true;
-}
+// 複選題輔助：以下函式現已抽到 utils.js（ansArrayOf, correctArrayOf, arraysEqual,
+// isAnswerCorrect, formatChoices）。本地保留別名供舊呼叫者使用，避免破壞性改動。
+const getAnswerArr = correctArrayOf;
+const getChosenArr = ansArrayOf;
 function formatCorrectAnswer(q) {
-    const labels = ['A','B','C','D'];
-    const a = getAnswerArr(q);
-    return a.map(i => labels[i] + '. ' + q.options[i]).join('、');
+    return formatChoices(q, correctArrayOf(q));
 }
 
 // 計時器

@@ -8,26 +8,17 @@ var catId = data.catId, catName = data.catName, questions = data.questions, answ
 var modeConf = CONFIG.MODES[examMode] || CONFIG.MODES.normal;
 
 // ===== 複選題輔助 =====
-function ansArr(a) { return (a === null || a === undefined) ? [] : (Array.isArray(a) ? a.slice().sort() : [a]); }
-function corrArr(q) { return Array.isArray(q.answer) ? q.answer.slice().sort() : [q.answer]; }
-function isCorr(q, chosen) {
-  if (chosen === null || chosen === undefined) return false;
+// 以下函式現已抽到 utils.js（ansArrayOf / correctArrayOf / arraysEqual /
+// isAnswerCorrect / formatChoices）。本檔保留別名相容舊呼叫。
+var ansArr = ansArrayOf;
+var corrArr = correctArrayOf;
+var isCorr = function(q, chosen) {
+  // 多了「空陣列視為未答」的判斷（result.js 特殊邏輯）
   if (Array.isArray(chosen) && chosen.length === 0) return false;
-  var a = corrArr(q), c = ansArr(chosen);
-  if (a.length !== c.length) return false;
-  for (var i = 0; i < a.length; i++) if (a[i] !== c[i]) return false;
-  return true;
-}
-function formatAns(q, chosen) {
-  var labels = ['A','B','C','D'];
-  var arr = ansArr(chosen);
-  if (arr.length === 0) return '';
-  return arr.map(function(i){ return labels[i] + '. ' + q.options[i]; }).join('、');
-}
-function formatCorrect(q) {
-  var labels = ['A','B','C','D'];
-  return corrArr(q).map(function(i){ return labels[i] + '. ' + q.options[i]; }).join('、');
-}
+  return isAnswerCorrect(q, chosen);
+};
+function formatAns(q, chosen) { return formatChoices(q, ansArrayOf(chosen)); }
+function formatCorrect(q) { return formatChoices(q, correctArrayOf(q)); }
 
 // ===== 計分 =====
 var correct = 0, wrong = 0, hinted = 0, skipped = 0;

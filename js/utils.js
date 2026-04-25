@@ -153,6 +153,36 @@ function getExamHistory() {
 /** 選項標籤 */
 const LABELS = ["A", "B", "C", "D"];
 
+/**
+ * 答案處理共用函式（exam.js / result.js 共用）
+ * 統一處理單選 (number) / 複選 (array) / 未答 (null/undefined) 三種情形
+ */
+function ansArrayOf(value) {
+    if (value === null || value === undefined) return [];
+    return Array.isArray(value) ? value.slice().sort() : [value];
+}
+function correctArrayOf(q) {
+    return Array.isArray(q.answer) ? q.answer.slice().sort() : [q.answer];
+}
+function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+}
+function isAnswerCorrect(q, chosen) {
+    if (chosen === null || chosen === undefined) return false;
+    return arraysEqual(correctArrayOf(q), ansArrayOf(chosen));
+}
+/**
+ * 格式化答案索引陣列為「A. xxx、B. yyy」字串
+ * @param {Object} q 題目（需有 options）
+ * @param {number[]} indices 索引陣列
+ */
+function formatChoices(q, indices) {
+    if (!indices || indices.length === 0) return '';
+    return indices.map(i => LABELS[i] + '. ' + q.options[i]).join('、');
+}
+
 // ===== 深色模式 =====
 const THEME_KEY = "theme_pref";
 

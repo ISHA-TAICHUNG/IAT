@@ -608,13 +608,16 @@ function doGet(e) {
         }
         if (action === "questions") {
             const cat = e.parameter.cat || "";
-            if (!cat) return jsonResponse({ error: "缺少 cat 參數" });
+            if (!cat) return jsonResponse({ error: "查詢失敗，請稍後重試" });
             return jsonResponse(getQuestions(cat, 80));
         }
         // 健康檢查
         return jsonResponse({ status: "ok" });
     } catch (err) {
-        return jsonResponse({ error: err.message });
+        // 記詳細錯誤至 GAS 日誌（可在 Apps Script 編輯器看），對外只回泛用訊息
+        const errId = "E" + new Date().getTime().toString(36);
+        try { Logger.log("[" + errId + "] doGet " + action + ": " + err.toString()); } catch (_) {}
+        return jsonResponse({ error: "系統暫時無法處理，請稍後重試", errorId: errId });
     }
 }
 
@@ -646,9 +649,11 @@ function doPost(e) {
             logAnswerDetails(body);
             return jsonResponse({ success: true });
         }
-        return jsonResponse({ error: "未知 action" });
+        return jsonResponse({ error: "未支援的請求類型" });
     } catch (err) {
-        return jsonResponse({ error: err.message });
+        const errId = "E" + new Date().getTime().toString(36);
+        try { Logger.log("[" + errId + "] doPost: " + err.toString()); } catch (_) {}
+        return jsonResponse({ error: "系統暫時無法處理，請稍後重試", errorId: errId });
     }
 }
 
@@ -675,7 +680,7 @@ function getCategories() {
 function getQuestions(catId, count) {
     // 驗證 catId 格式（僅允許中文、英數字、底線）
     if (!/^[\u4e00-\u9fff\w]+$/.test(catId)) {
-        throw new Error("無效的職類 ID");
+        throw new Error("查詢參數異常");
     }
     var cacheKey = "cat_" + catId;
     var all;
