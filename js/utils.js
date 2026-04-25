@@ -123,7 +123,25 @@ function saveExamHistory(record) {
     const history = getExamHistory();
     history.unshift(record);
     if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+        // 容量滿（QuotaExceededError 等）→ 自動瘦身重試
+        // 策略：保留最近 20 筆，並嘗試清掉 feedback_queue 釋放空間
+        try {
+            const slim = history.slice(0, 20);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(slim));
+        } catch (_) {
+            // 還是失敗 → 釋放輔助資料後再試
+            try { localStorage.removeItem("feedback_queue"); } catch (_) {}
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 10)));
+            } catch (__) {
+                // 終極失敗 → 整個歷史丟掉，至少保住新一筆
+                localStorage.setItem(HISTORY_KEY, JSON.stringify([record]));
+            }
+        }
+    }
 }
 
 function getExamHistory() {
@@ -259,8 +277,7 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
         });
         showToast(typeof t === 'function' ? t('fb.success') : 'Submitted!');
     } catch (e) {
-        console.warn("Feedback submit failed, queuing:", e);
-        // 離線佇列：暫存到 localStorage
+        // 提交失敗（多半是斷網）→ 暫存到 localStorage 佇列，下次上線自動補送
         var queue = JSON.parse(localStorage.getItem("feedback_queue") || "[]");
         queue.push(feedbackPayload);
         localStorage.setItem("feedback_queue", JSON.stringify(queue));

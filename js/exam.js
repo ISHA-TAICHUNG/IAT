@@ -124,7 +124,6 @@ async function init() {
         startTimer();
         document.addEventListener("keydown", handleKey);
     } catch (e) {
-        console.warn("Load failed:", e);
         var el = document.getElementById("loading");
         el.textContent = t('error.load') + e.message + ' ' + t('error.network');
         el.style.color = 'red';
@@ -232,7 +231,7 @@ function renderQuestion() {
         </div>
         ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題</div>` : ''}
         <div class="q-text">${escapeHtml(q.q)}</div>
-        ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="lazy" onclick="openImageModal(this.src)"></div>` : ''}
+        ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="eager" onclick="openImageModal(this.src)"></div>` : ''}
         <div class="options-list" id="options">
           ${q.options.map((opt, i) => {
         let cls = "";
@@ -406,7 +405,18 @@ function autoSave() {
             savedAt: new Date().toISOString(),
         });
     } catch (e) {
-        console.warn("存檔失敗（儲存空間可能不足）：", e);
+        // 儲存空間不足 → 嘗試釋放歷史與離線反饋佇列後再試
+        try { localStorage.removeItem("feedback_queue"); } catch (_) {}
+        try {
+            const hist = JSON.parse(localStorage.getItem("exam_history") || "[]");
+            if (hist.length > 10) {
+                localStorage.setItem("exam_history", JSON.stringify(hist.slice(0, 10)));
+            }
+        } catch (_) {}
+        try {
+            saveProgress({ catId: CAT_ID, catName, examMode: EXAM_MODE, questions, answers,
+                current, timerSeconds, savedAt: new Date().toISOString() });
+        } catch (_) { /* 仍然失敗就放棄存檔，不影響作答 */ }
     }
 }
 
@@ -469,7 +479,7 @@ function finishExam() {
                 answers: answerDetails,
             }));
         }
-    } catch (e) { console.warn("report failed:", e); }
+    } catch (e) { /* sendBeacon 失敗不影響成績頁顯示，靜默處理 */ }
 
     location.href = "result.html";
 }

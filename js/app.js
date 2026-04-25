@@ -392,7 +392,7 @@ if (typeof flushFeedbackQueue === 'function') flushFeedbackQueue();
 loadCategories()
   .then(renderDropdown)
   .catch(function(err) {
-    console.warn("Load failed:", err);
+    // 載入失敗（網路或 GAS 異常）→ 顯示錯誤訊息給使用者
     var wrap = document.getElementById("select-wrap");
     wrap.textContent = '';
     var p = document.createElement('p');

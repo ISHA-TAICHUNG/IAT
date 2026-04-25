@@ -46,15 +46,26 @@ const API_TOKEN = "IAT_2026_s3cUr3T0k3n_xK9mP7";
 const CACHE = CacheService.getScriptCache();
 const CACHE_TTL = 21600; // 6 小時
 
-// ── Rate Limit（每分鐘每 IP 最多 30 次請求）──
-const RATE_LIMIT = 30;
+// ── Rate Limit ──
+// 正常一場測驗請求數預估：載分類 1 + 載題目 1 + 反饋 0~3 + 交卷 1 ≈ 3~6 次/場
+// 單一指紋 20/分 可滿足兩場連續測驗；超過視為異常，全域 200/分 防止指紋輪替爆量
+const RATE_LIMIT = 20;
+const GLOBAL_RATE_LIMIT = 200;
 const RATE_WINDOW = 60; // 秒
 
 function checkRateLimit(ip) {
+    // 全域計數（防止以不同指紋繞過個人限制）
+    const globalKey = "rl_global";
+    const globalCount = Number(CACHE.get(globalKey)) || 0;
+    if (globalCount >= GLOBAL_RATE_LIMIT) return false;
+
+    // 單指紋計數
     const key = "rl_" + ip;
     const count = Number(CACHE.get(key)) || 0;
     if (count >= RATE_LIMIT) return false;
+
     CACHE.put(key, String(count + 1), RATE_WINDOW);
+    CACHE.put(globalKey, String(globalCount + 1), RATE_WINDOW);
     return true;
 }
 

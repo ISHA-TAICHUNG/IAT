@@ -1,5 +1,5 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20260424f";
+const CACHE_NAME = "exam-v20260425a";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
