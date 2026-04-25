@@ -218,7 +218,7 @@ function renderQuestion() {
         ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題</div>` : ''}
         <div class="q-text">${escapeHtml(q.q)}</div>
         ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="eager" onclick="openImageModal(this.src)"></div>` : ''}
-        <div class="options-list" id="options">
+        <div class="options-list" id="options" role="radiogroup" aria-label="作答選項，可按鍵盤 1-4 快速選擇">
           ${q.options.map((opt, i) => {
         let cls = "";
         const isSelected = chosenArr.indexOf(i) >= 0;
@@ -342,6 +342,14 @@ function toggleBm() {
 }
 
 function handleKey(e) {
+    // 輸入法組字中（如注音、倉頡、印尼/越南文輸入法）不觸發快捷鍵，避免誤選答案
+    if (e.isComposing || e.keyCode === 229) return;
+    // 焦點在輸入欄位（反饋 textarea 等）時也不攔截
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
+        if (e.key !== 'Escape') return;
+    }
+
     if (e.key === "Escape") {
         if (document.getElementById("feedback-modal")?.classList.contains("open")) { closeFeedback(); return; }
         if (document.getElementById("end-confirm-modal")?.classList.contains("open")) { closeEndConfirm(); return; }
