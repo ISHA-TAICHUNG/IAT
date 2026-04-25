@@ -649,11 +649,124 @@ function doPost(e) {
             logAnswerDetails(body);
             return jsonResponse({ success: true });
         }
+
+        // ─────────── Admin endpoints（供管理工具使用，仍受 token 保護）───────────
+        if (body.action === "adminListUnprocessed") {
+            return jsonResponse(adminListUnprocessedHandler());
+        }
+        if (body.action === "adminMarkDoneByRow") {
+            return jsonResponse(adminMarkDoneByRowHandler(body.rows || []));
+        }
+        if (body.action === "adminMarkDone") {
+            return jsonResponse(adminMarkDoneHandler(body.targets));
+        }
+        if (body.action === "adminReplaceJson") {
+            return jsonResponse(adminReplaceJsonHandler(body.cat, body.content));
+        }
+
         return jsonResponse({ error: "未支援的請求類型" });
     } catch (err) {
         const errId = "E" + new Date().getTime().toString(36);
         try { Logger.log("[" + errId + "] doPost: " + err.toString()); } catch (_) {}
         return jsonResponse({ error: "系統暫時無法處理，請稍後重試", errorId: errId });
+    }
+}
+
+// ════════════════════════════ Admin Handlers ════════════════════════════
+// 反饋管理（讀取「反饋紀錄」工作表，需綁 Sheet 的 GAS 才能用）
+const FEEDBACK_SHEET_NAME = "反饋紀錄";
+
+function adminListUnprocessedHandler() {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName(FEEDBACK_SHEET_NAME);
+    if (!sheet) throw new Error("找不到反饋紀錄分頁");
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const doneCol = headers.indexOf("已處理");
+    const data = sheet.getDataRange().getValues();
+    const items = [];
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row[0]) continue;
+        const done = String(row[doneCol] || "").trim();
+        if (done === "是") continue;
+        items.push({
+            row: i + 1,
+            time: row[0] ? String(row[0]) : "",
+            cat: String(row[1] || "").trim(),
+            qid: row[2],
+            fbType: String(row[9] || "").trim(),
+            desc: String(row[10] || "").trim().substring(0, 500),
+        });
+    }
+    return { totalUnprocessed: items.length, items: items };
+}
+
+function adminMarkDoneByRowHandler(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return { error: "缺少 rows 參數" };
+    }
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName(FEEDBACK_SHEET_NAME);
+    if (!sheet) return { error: "找不到反饋紀錄分頁" };
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const doneColIdx = headers.indexOf("已處理") + 1;
+    let count = 0;
+    const skipped = [];
+    for (const r of rows) {
+        try {
+            sheet.getRange(r, doneColIdx).setValue("是");
+            count++;
+        } catch (e) {
+            skipped.push({ row: r, error: e.message });
+        }
+    }
+    return { success: true, count: count, skipped: skipped };
+}
+
+function adminMarkDoneHandler(targets) {
+    // targets: [{cat, qid}, ...]
+    if (!Array.isArray(targets) || targets.length === 0) {
+        return { error: "缺少 targets 參數" };
+    }
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName(FEEDBACK_SHEET_NAME);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const doneColIdx = headers.indexOf("已處理") + 1;
+    const data = sheet.getDataRange().getValues();
+    const set = new Set(targets.map(t => `${t.cat}/${t.qid}`));
+    let count = 0;
+    const hits = [];
+    for (let i = 1; i < data.length; i++) {
+        const cat = String(data[i][1] || "").trim();
+        const qid = data[i][2];
+        const key = `${cat}/${qid}`;
+        if (set.has(key)) {
+            sheet.getRange(i + 1, doneColIdx).setValue("是");
+            count++;
+            hits.push({ row: i + 1, key: key });
+        }
+    }
+    return { success: true, count: count, hits: hits };
+}
+
+function adminReplaceJsonHandler(cat, content) {
+    if (!cat || !content) return { error: "缺少 cat 或 content 參數" };
+    try {
+        const fname = cat + ".json";
+        const file = getFileByName(fname);
+        if (!file) return { error: "找不到檔案" };
+        // 備份
+        try { backupFile(fname); } catch (_) {}
+        const jsonStr = JSON.stringify(content, null, 2);
+        file.setContent(jsonStr);
+        const qCount = (content.questions || []).length;
+        try { updateCategoryTotal(cat, qCount); } catch (_) {}
+        // 清快取
+        CACHE.remove("cat_" + cat);
+        CACHE.remove("categories");
+        return { success: true, cat: cat, questions: qCount, bytes: jsonStr.length };
+    } catch (err) {
+        return { error: err.message };
     }
 }
 
