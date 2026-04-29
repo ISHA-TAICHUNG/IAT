@@ -23,6 +23,22 @@ let timerInterval = null;
 let modeConfig = CONFIG.MODES[EXAM_MODE] || CONFIG.MODES.normal;
 let timerSeconds = modeConfig.time * 60;
 
+// 從 categories.json 取顯示名稱（id 可能是「移動式起重機_本籍」，name 是「移動式起重機操作人員（本籍）」）
+async function resolveCatDisplayName(catId) {
+    try {
+        const res = await fetchWithTimeout(
+            `${CONFIG.GAS_URL}?action=categories&token=${CONFIG.API_TOKEN}`
+        );
+        if (!res.ok) return catId;
+        const cats = await res.json();
+        if (!Array.isArray(cats)) return catId;
+        const found = cats.find(c => c.id === catId);
+        return found ? found.name : catId;
+    } catch (_) {
+        return catId; // 失敗時退回 id（不影響功能）
+    }
+}
+
 // ===== 初始化 =====
 async function init() {
     if (!CAT_ID) { location.href = "index.html"; return; }
@@ -53,16 +69,19 @@ async function init() {
     }
 
     try {
+        // 解析顯示用的職類名稱（id 可能是「移動式起重機_本籍」，name 是「移動式起重機操作人員（本籍）」）
+        const displayName = await resolveCatDisplayName(CAT_ID);
+
         if (MODE === "review") {
             // 錯題複習模式：從 sessionStorage 讀取錯題
             const stored = sessionStorage.getItem("reviewQuestions");
             if (!stored) throw new Error("No review data found");
             questions = JSON.parse(stored);
-            catName = CAT_ID + t('exam.review.suffix');
+            catName = displayName + t('exam.review.suffix');
         } else {
             // 一般模式：從 GAS 取題
             const res = await fetchWithTimeout(
-                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}`
+                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}`
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
@@ -89,7 +108,7 @@ async function init() {
             } else {
                 questions = shuffleArray(data).slice(0, numQ);
             }
-            catName = EXAM_MODE === "speed" ? `${CAT_ID}${t('exam.speed.suffix')}` : CAT_ID;
+            catName = EXAM_MODE === "speed" ? `${displayName}${t('exam.speed.suffix')}` : displayName;
         }
 
         // 隨機排列每題選項
