@@ -663,6 +663,12 @@ function doPost(e) {
         if (body.action === "adminReplaceJson") {
             return jsonResponse(adminReplaceJsonHandler(body.cat, body.content));
         }
+        if (body.action === "adminGetCategoryJson") {
+            return jsonResponse(adminGetCategoryJsonHandler(body.cat));
+        }
+        if (body.action === "adminGetQuestion") {
+            return jsonResponse(adminGetQuestionHandler(body.cat, body.qid));
+        }
 
         return jsonResponse({ error: "未支援的請求類型" });
     } catch (err) {
@@ -765,6 +771,39 @@ function adminReplaceJsonHandler(cat, content) {
         CACHE.remove("cat_" + cat);
         CACHE.remove("categories");
         return { success: true, cat: cat, questions: qCount, bytes: jsonStr.length };
+    } catch (err) {
+        return { error: err.message };
+    }
+}
+
+// 讀取整份職類 JSON（給雲端排程任務用 — 雲端 Claude 沒有本機檔案）
+function adminGetCategoryJsonHandler(cat) {
+    if (!cat) return { error: "缺少 cat 參數" };
+    try {
+        const fname = cat + ".json";
+        const file = getFileByName(fname);
+        if (!file) return { error: "找不到檔案" };
+        const content = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
+        return { success: true, cat: cat, content: content };
+    } catch (err) {
+        return { error: err.message };
+    }
+}
+
+// 讀取單題（給雲端 Claude 快速查詢用，避免下載整份 JSON）
+function adminGetQuestionHandler(cat, qid) {
+    if (!cat || qid === undefined || qid === null) {
+        return { error: "缺少 cat 或 qid 參數" };
+    }
+    try {
+        const fname = cat + ".json";
+        const file = getFileByName(fname);
+        if (!file) return { error: "找不到檔案" };
+        const content = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
+        const targetQid = parseInt(qid, 10);
+        const q = (content.questions || []).find(x => parseInt(x.id, 10) === targetQid);
+        if (!q) return { error: "題目不存在", cat: cat, qid: targetQid };
+        return { success: true, cat: cat, qid: targetQid, question: q };
     } catch (err) {
         return { error: err.message };
     }
