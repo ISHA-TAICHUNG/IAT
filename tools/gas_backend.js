@@ -609,7 +609,9 @@ function doGet(e) {
         if (action === "questions") {
             const cat = e.parameter.cat || "";
             if (!cat) return jsonResponse({ error: "查詢失敗，請稍後重試" });
-            return jsonResponse(getQuestions(cat, 80));
+            // full=1 → 回傳全部題目（前端按特殊規則自抽）
+            const wantFull = e.parameter.full === '1' || e.parameter.full === 'true';
+            return jsonResponse(getQuestions(cat, 80, wantFull));
         }
         // 健康檢查
         return jsonResponse({ status: "ok" });
@@ -829,7 +831,7 @@ function getCategories() {
 }
 
 // ─────────────────────────── 隨機抽題 ────────────────────────────
-function getQuestions(catId, count) {
+function getQuestions(catId, count, full) {
     // 驗證 catId 格式（僅允許中文、英數字、底線）
     if (!/^[\u4e00-\u9fff\w]+$/.test(catId)) {
         throw new Error("查詢參數異常");
@@ -874,6 +876,43 @@ function getQuestions(catId, count) {
             var tmp = b[i]; b[i] = b[j]; b[j] = tmp;
         }
         return b;
+    }
+
+    // full=true：回傳全部題目（讓前端按特殊規則自抽，如「N 單選+M 複選」）
+    // 注意：result 結尾還有「補圖」邏輯，full 走相同路徑可共用
+    if (full) {
+        var pool = all.slice();
+        var result = pool;  // 不裁切
+        // 跳轉到下方補圖邏輯（用 fromCache 判斷）
+        if (fromCache) {
+            var needsImg2 = result.some(function (q) {
+                var t = q.q || '';
+                return t.indexOf('圖') >= 0 || t.indexOf('標章') >= 0 ||
+                    t.indexOf('image') >= 0 || t.indexOf('hình') >= 0 ||
+                    t.indexOf('gambar') >= 0 || t.indexOf('รูป') >= 0;
+            });
+            if (needsImg2) {
+                try {
+                    var fname2 = catId + ".json";
+                    var file2 = getFileByName(fname2);
+                    var fullData2 = JSON.parse(file2.getBlob().getDataAsString("UTF-8"));
+                    var imgMap2 = {};
+                    fullData2.questions.forEach(function (q) {
+                        if (q.image || q.optionImages) imgMap2[q.id] = q;
+                    });
+                    if (Object.keys(imgMap2).length > 0) {
+                        result = result.map(function (q) {
+                            if (imgMap2[q.id]) {
+                                if (imgMap2[q.id].image) q.image = imgMap2[q.id].image;
+                                if (imgMap2[q.id].optionImages) q.optionImages = imgMap2[q.id].optionImages;
+                            }
+                            return q;
+                        });
+                    }
+                } catch (e) { }
+            }
+        }
+        return result;
     }
 
     // 依 subject 欄位做 80/20 配比抽題（操作/專業 80%、共同 20%）

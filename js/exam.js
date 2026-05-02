@@ -80,8 +80,12 @@ async function init() {
             catName = displayName + t('exam.review.suffix');
         } else {
             // 一般模式：從 GAS 取題
+            // 若該職類有特殊配比規則 (EXAM_RULES_BY_CAT) 且為 normal/mock 模式 → 取全題庫由前端自抽
+            const _hasRule = CONFIG.EXAM_RULES_BY_CAT && CONFIG.EXAM_RULES_BY_CAT[CAT_ID];
+            const _useFull = _hasRule && (EXAM_MODE === 'normal' || EXAM_MODE === 'mock');
+            const _fullParam = _useFull ? '&full=1' : '';
             const res = await fetchWithTimeout(
-                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}`
+                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}${_fullParam}`
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
