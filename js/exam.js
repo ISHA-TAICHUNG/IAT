@@ -88,25 +88,47 @@ async function init() {
             if (data.error) throw new Error(data.error);
             if (!Array.isArray(data)) throw new Error("Invalid data format");
 
-            // 急速模式抽指定題數（維持 80/20 配比）
+            // 抽題策略（依優先序）：
+            // 1) 特殊規則 (EXAM_RULES_BY_CAT)：normal/mock 模式按單選/複選分開抽
+            // 2) 80/20 配比：題庫有 subject 標籤時按操作/共同 80:20 抽
+            // 3) 純隨機：以上皆非
             const numQ = modeConfig.questions;
-            const hasSubject = data.some(function(q) { return q.subject; });
-            if (hasSubject && numQ < data.length) {
-                // 「操作」(舊) 和「專業」(新) 都視為主科
-                const opQs = shuffleArray(data.filter(function(q) { return q.subject === '操作' || q.subject === '專業'; }));
-                const cmQs = shuffleArray(data.filter(function(q) { return q.subject === '共同'; }));
-                const opN = Math.round(numQ * 0.8);
-                const cmN = numQ - opN;
-                var picked = opQs.slice(0, opN).concat(cmQs.slice(0, cmN));
-                // 題數不足時從剩餘題目補充
-                if (picked.length < numQ) {
+            const examRules = CONFIG.EXAM_RULES_BY_CAT && CONFIG.EXAM_RULES_BY_CAT[CAT_ID];
+            const useExamRules = examRules && (EXAM_MODE === 'normal' || EXAM_MODE === 'mock');
+
+            if (useExamRules) {
+                // 1) 依職類規則分組抽題（單選 N + 複選 M）
+                const singleQs = shuffleArray(data.filter(function(q) { return !isMultiQ(q); }));
+                const multiQs  = shuffleArray(data.filter(function(q) { return isMultiQ(q); }));
+                const singleN = examRules.single ? examRules.single.count : 0;
+                const multiN  = examRules.multi  ? examRules.multi.count  : 0;
+                var picked = singleQs.slice(0, singleN).concat(multiQs.slice(0, multiN));
+                // 題目不足時用剩餘補滿
+                if (picked.length < singleN + multiN) {
                     var pickedIds = new Set(picked.map(function(q) { return q.id; }));
                     var extra = shuffleArray(data.filter(function(q) { return !pickedIds.has(q.id); }));
-                    picked = picked.concat(extra.slice(0, numQ - picked.length));
+                    picked = picked.concat(extra.slice(0, (singleN + multiN) - picked.length));
                 }
                 questions = shuffleArray(picked);
             } else {
-                questions = shuffleArray(data).slice(0, numQ);
+                const hasSubject = data.some(function(q) { return q.subject; });
+                if (hasSubject && numQ < data.length) {
+                    // 2) 80/20 配比（既有邏輯）
+                    const opQs = shuffleArray(data.filter(function(q) { return q.subject === '操作' || q.subject === '專業'; }));
+                    const cmQs = shuffleArray(data.filter(function(q) { return q.subject === '共同'; }));
+                    const opN = Math.round(numQ * 0.8);
+                    const cmN = numQ - opN;
+                    var picked = opQs.slice(0, opN).concat(cmQs.slice(0, cmN));
+                    if (picked.length < numQ) {
+                        var pickedIds = new Set(picked.map(function(q) { return q.id; }));
+                        var extra = shuffleArray(data.filter(function(q) { return !pickedIds.has(q.id); }));
+                        picked = picked.concat(extra.slice(0, numQ - picked.length));
+                    }
+                    questions = shuffleArray(picked);
+                } else {
+                    // 3) 純隨機
+                    questions = shuffleArray(data).slice(0, numQ);
+                }
             }
             catName = EXAM_MODE === "speed" ? `${displayName}${t('exam.speed.suffix')}` : displayName;
         }
@@ -461,9 +483,10 @@ function finishExam() {
 
     // 回報統計到 GAS（使用 sendBeacon 確保頁面跳轉前送出）
     try {
-        const realCorrect = answers.filter((a, i) => !a.hinted && isAnswerCorrect(questions[i], a.chosen)).length;
-        const scorePerQ = CONFIG.FULL_SCORE / questions.length;
-        const score = Math.round(realCorrect * scorePerQ * 100) / 100;
+        // 使用共用 calculateScore（支援職類特殊配分規則）
+        const sc = calculateScore(CAT_ID, questions, answers);
+        const realCorrect = sc.realCorrect;
+        const score = sc.score;
         navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
             action: "logResult",
             token: CONFIG.API_TOKEN,

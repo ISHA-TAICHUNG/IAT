@@ -41,9 +41,11 @@ questions.forEach(function(q, i) {
   }
 });
 
-var realCorrect = answers.filter(function(a, i) { return !a.hinted && isCorr(questions[i], a.chosen); }).length;
-var scorePerQ = CONFIG.FULL_SCORE / questions.length;
-var score = Math.round(realCorrect * scorePerQ * 100) / 100;
+// 使用共用 calculateScore（支援職類特殊配分規則）
+var _sc = calculateScore(catId, questions, answers);
+var realCorrect = _sc.realCorrect;
+var score = _sc.score;
+var perQScores = _sc.perQ;  // 每題分數陣列（供成績單細項顯示）
 var passScore = getPassScore(catId);
 var pass = score >= passScore;
 

@@ -173,6 +173,51 @@ function isAnswerCorrect(q, chosen) {
     if (chosen === null || chosen === undefined) return false;
     return arraysEqual(correctArrayOf(q), ansArrayOf(chosen));
 }
+/** 判斷題目是否為複選題（answer 為陣列或 type==='multi'） */
+function isMultiQ(q) {
+    return !!(q && (q.type === 'multi' || Array.isArray(q.answer)));
+}
+/**
+ * 計算分數：支援「依職類分別配分」的特殊規則 (CONFIG.EXAM_RULES_BY_CAT)
+ * 若 catId 在 EXAM_RULES_BY_CAT，按單選/複選 scorePerQ 分別計算
+ * 否則用預設：FULL_SCORE / 題數 平均配分
+ *
+ * @param {string} catId 職類 ID
+ * @param {Array} questions 題目陣列
+ * @param {Array} answers 作答陣列（每元素 {chosen, hinted}）
+ * @returns {{score:number, realCorrect:number, perQ:Array<number>}}
+ */
+function calculateScore(catId, questions, answers) {
+    const rules = (typeof CONFIG !== 'undefined' && CONFIG.EXAM_RULES_BY_CAT) ? CONFIG.EXAM_RULES_BY_CAT[catId] : null;
+    let realCorrect = 0;
+    const perQ = [];
+    if (rules) {
+        // 特殊規則：單選/複選分別配分
+        let total = 0;
+        questions.forEach((q, i) => {
+            const a = answers[i] || {};
+            const correct = !a.hinted && isAnswerCorrect(q, a.chosen);
+            const isMulti = isMultiQ(q);
+            const scorePerQ = isMulti
+                ? (rules.multi && rules.multi.scorePerQ) || 0
+                : (rules.single && rules.single.scorePerQ) || 0;
+            perQ.push(scorePerQ);
+            if (correct) {
+                realCorrect++;
+                total += scorePerQ;
+            }
+        });
+        return { score: Math.round(total * 100) / 100, realCorrect, perQ };
+    }
+    // 預設：均等配分
+    const scorePerQ = CONFIG.FULL_SCORE / questions.length;
+    questions.forEach((q, i) => {
+        const a = answers[i] || {};
+        if (!a.hinted && isAnswerCorrect(q, a.chosen)) realCorrect++;
+        perQ.push(scorePerQ);
+    });
+    return { score: Math.round(realCorrect * scorePerQ * 100) / 100, realCorrect, perQ };
+}
 /**
  * 格式化答案索引陣列為「A. xxx、B. yyy」字串
  * @param {Object} q 題目（需有 options）

@@ -25,4 +25,14 @@ const CONFIG = {
         mock: { label: "模擬考", questions: 80, time: 100, icon: "🎯" },
     },
     DEFAULT_MODE: "normal",
+
+    // 特殊出題規則：依職類設定「單選/複選分開抽題」與「分別配分」
+    // 觸發時機：normal / mock 模式（speed 維持原本隨機抽題的快速練習邏輯）
+    // 結構：{ single: { count, scorePerQ }, multi: { count, scorePerQ } }
+    EXAM_RULES_BY_CAT: {
+        '職業安全衛生管理員': {
+            single: { count: 60, scorePerQ: 1 },   // 60 題 × 1 分 = 60 分
+            multi:  { count: 20, scorePerQ: 2 },   // 20 題 × 2 分 = 40 分
+        },
+    },
 };
