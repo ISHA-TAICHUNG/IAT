@@ -102,18 +102,26 @@ async function init() {
 
             if (useExamRules) {
                 // 1) 依職類規則分組抽題（單選 N + 複選 M）
+                //    保留「單選在前、複選在後」的順序（如職業安全衛生管理員：1-60 單選、61-80 複選）
+                //    各組內順序仍隨機（每次抽到的題目不同）
                 const singleQs = shuffleArray(data.filter(function(q) { return !isMultiQ(q); }));
                 const multiQs  = shuffleArray(data.filter(function(q) { return isMultiQ(q); }));
                 const singleN = examRules.single ? examRules.single.count : 0;
                 const multiN  = examRules.multi  ? examRules.multi.count  : 0;
-                var picked = singleQs.slice(0, singleN).concat(multiQs.slice(0, multiN));
-                // 題目不足時用剩餘補滿
-                if (picked.length < singleN + multiN) {
-                    var pickedIds = new Set(picked.map(function(q) { return q.id; }));
-                    var extra = shuffleArray(data.filter(function(q) { return !pickedIds.has(q.id); }));
-                    picked = picked.concat(extra.slice(0, (singleN + multiN) - picked.length));
+                var pickedSingle = singleQs.slice(0, singleN);
+                var pickedMulti  = multiQs.slice(0, multiN);
+                // 題目不足時用剩餘補滿（保持類型順序）
+                if (pickedSingle.length < singleN) {
+                    var sIds = new Set(pickedSingle.map(function(q) { return q.id; }));
+                    var extraS = shuffleArray(data.filter(function(q) { return !isMultiQ(q) && !sIds.has(q.id); }));
+                    pickedSingle = pickedSingle.concat(extraS.slice(0, singleN - pickedSingle.length));
                 }
-                questions = shuffleArray(picked);
+                if (pickedMulti.length < multiN) {
+                    var mIds = new Set(pickedMulti.map(function(q) { return q.id; }));
+                    var extraM = shuffleArray(data.filter(function(q) { return isMultiQ(q) && !mIds.has(q.id); }));
+                    pickedMulti = pickedMulti.concat(extraM.slice(0, multiN - pickedMulti.length));
+                }
+                questions = pickedSingle.concat(pickedMulti);
             } else {
                 const hasSubject = data.some(function(q) { return q.subject; });
                 if (hasSubject && numQ < data.length) {
