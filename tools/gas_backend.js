@@ -40,7 +40,7 @@ function getSpreadsheet() {
 }
 
 // ── API 存取令牌（與前端 config.js 一致）──
-const API_TOKEN = "IAT_2026_s3cUr3T0k3n_xK9mP7";
+const API_TOKEN = "IAT_2026_s3cUr3T0k3n_xK9mP7"; // gitleaks:allow — 前端公開 token，rate limit/設計性允許
 
 // ── 快取：避免重複讀 Drive（每次部署後 6 小時內同一職類快取）
 const CACHE = CacheService.getScriptCache();
@@ -69,13 +69,44 @@ function checkRateLimit(ip) {
     return true;
 }
 
-function getClientIP(e) {
-    // GAS 無法取得真實 IP，用 userAgent + timestamp 模擬指紋
+// 與前端 getOrCreateClientId() 相同的 regex；惡意 caller 塞髒值會被丟回 "anon"
+var CLIENT_ID_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
+
+function getClientIP(e, body) {
+    // GAS 無法取得真實 IP；採用以下優先序產生「客戶端指紋」：
+    //
+    // 1. body.clientId — POST body 帶的 UUID（doPost / sendBeacon / feedback 用）
+    // 2. e.parameter.clientId — GET query string 帶的 UUID（doGet 用）
+    // 3. Session.getTemporaryActiveUserKey() — Google 帳號登入者 stable per-script
+    //    per-user key；匿名 WebApp users 通常為空字串
+    // 4. fallback: "anon"
+    //
+    // ⚠️ 刻意「不」把 e.parameter 全部塞進指紋。原本舊版做 JSON.stringify(e.parameter)
+    //   會讓「同一使用者打不同 action」算到不同 bucket（per-(user × query) 配額），
+    //   反而讓所有匿名使用者共用同一個 categories bucket → 任何人連發 20 次
+    //   action=categories 就會把全站該 endpoint 卡住 60 秒（2026-05-26 Codex 偵錯確認）。
+    //
+    // 此修正後的行為：每個「實體 client（帶 clientId）」獨立 20 req/min 配額，
+    // 跨 endpoint 共用。匿名無 clientId 者共用 "anon" bucket（兜底節流）。
+    //
+    // clientId 是 client-controlled，不能當安全邊界（惡意者可任意換 ID 繞配額），
+    // 全域 GLOBAL_RATE_LIMIT=200 仍是兜底。但 regex 校驗能擋掉壞值，避免出現奇形
+    // 怪狀的 bucket key 導致 cache 寫入失敗（如帶換行/逗號等 GAS Cache 不接受字符）。
+    //
+    // 部署前請依 AGENTS.md 之 GAS deploy review gate 程序審查。
     try {
-        return Utilities.computeDigest(
-            Utilities.DigestAlgorithm.MD5,
-            (e.parameter ? JSON.stringify(e.parameter) : "") + Session.getTemporaryActiveUserKey()
-        ).map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, "0")).join("").substring(0, 12);
+        // 優先序：body.clientId (POST) > e.parameter.clientId (GET) > Session > "anon"
+        var bodyId = (body && body.clientId) ? String(body.clientId).slice(0, 64) : "";
+        var paramId = (e && e.parameter && e.parameter.clientId) ? String(e.parameter.clientId).slice(0, 64) : "";
+        // 格式校驗：不合法 → 視為未提供，掉到 session/anon
+        if (bodyId && !CLIENT_ID_PATTERN.test(bodyId)) bodyId = "";
+        if (paramId && !CLIENT_ID_PATTERN.test(paramId)) paramId = "";
+        var sessionKey = "";
+        try { sessionKey = Session.getTemporaryActiveUserKey() || ""; } catch (_) {}
+        var raw = bodyId || paramId || sessionKey || "anon";
+        return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, raw)
+            .map(function(b) { return (b < 0 ? b + 256 : b).toString(16).padStart(2, "0"); })
+            .join("").substring(0, 12);
     } catch (_) {
         return "unknown";
     }
@@ -301,8 +332,9 @@ function applyCorrections() {
                         case "答案(ABCD)": {
                             const answerMap = { "A": 0, "B": 1, "C": 2, "D": 3 };
                             const raw = correction.newValue.toUpperCase().replace(/[,，\s]/g, "");
-                            // 支援複選（多字母如 "AC" 或 "ABD"）
-                            if (Array.isArray(q.answer) || raw.length > 1) {
+                            // 純依輸入長度決定型別,避免「原本是複選→改單選」殘留 q.multi 或陣列型別不一致
+                            if (raw.length > 1) {
+                                // 複選
                                 const letters = raw.split("");
                                 const indices = letters.map(L => answerMap[L]);
                                 if (indices.some(v => v === undefined)) {
@@ -311,8 +343,9 @@ function applyCorrections() {
                                     continue;
                                 }
                                 q.answer = indices.sort((a, b) => a - b);
-                                if (q.answer.length > 1) q.multi = true;
+                                q.multi = true;
                             } else {
+                                // 單選 — 不管原本是 number 或陣列,都統一改 number 並清除 multi
                                 const ansIdx = answerMap[raw];
                                 if (ansIdx === undefined) {
                                     sheet.getRange(correction.row, 5).setValue("❌ 答案請填 A/B/C/D");
@@ -320,6 +353,7 @@ function applyCorrections() {
                                     continue;
                                 }
                                 q.answer = ansIdx;
+                                if (q.multi) delete q.multi;
                             }
                             break;
                         }
@@ -577,14 +611,20 @@ function addNewQuestions() {
 // ================== 清除快取 ==================
 function clearAllCache() {
     var keys = ["categories"];
+    var readError = null;
     try {
         var cats = JSON.parse(getFileByName("categories.json").getBlob().getDataAsString("UTF-8"));
         cats.forEach(function (c) { keys.push("cat_" + c.id); });
     } catch (e) {
-        // 無法讀取 categories.json 時僅清 categories key
+        readError = e.message || String(e);
     }
     CACHE.removeAll(keys);
-    SpreadsheetApp.getUi().alert("✅ 快取已清除！\n\n共清除 " + keys.length + " 筆快取。\n新題庫將在下次請求時重新載入。");
+    var ui = SpreadsheetApp.getUi();
+    if (readError) {
+        ui.alert("⚠ 部分快取已清除\n\n清除 " + keys.length + " 筆,但讀 categories.json 失敗:\n" + readError);
+    } else {
+        ui.alert("✅ 快取已清除！\n\n共清除 " + keys.length + " 筆快取。\n新題庫將在下次請求時重新載入。");
+    }
 }
 
 // ────────────────────────────── GET ──────────────────────────────
@@ -613,6 +653,15 @@ function doGet(e) {
             const wantFull = e.parameter.full === '1' || e.parameter.full === 'true';
             return jsonResponse(getQuestions(cat, 80, wantFull));
         }
+        // if (action === "debugCheck") return jsonResponse({ result: debugCheckRaw(e.parameter.cat, Number(e.parameter.qid)) });
+        // [admin] 批次操作端點 — 預設全關閉,需要時手動 uncomment 並 redeploy
+        // 對應函式定義: admin_wrapper.gs / batch_*.gs
+        // (跑完即用即丟,務必 undeploy 並重新 comment)
+        // if (action === "adminBatchAppendCorrections") return jsonResponse({ result: batchAppendCorrections() });
+        // if (action === "adminBatchMarkFeedback")      return jsonResponse({ result: batchMarkFeedback() });
+        // if (action === "adminApplyCorrections")       return jsonResponse({ result: adminApplyCorrectionsWrapper() });
+        // if (action === "adminClearAllCache")          return jsonResponse({ result: adminClearAllCacheWrapper() });
+        // if (action === "adminCleanupMisplacedBackups") return jsonResponse({ result: adminCleanupMisplacedBackups(e.parameter.dryRun !== "false") });
         // 健康檢查
         return jsonResponse({ status: "ok" });
     } catch (err) {
@@ -633,8 +682,8 @@ function doPost(e) {
             return jsonResponse({ error: "未授權存取" });
         }
 
-        // Rate Limit
-        const clientId = getClientIP(e);
+        // Rate Limit — doPost 把 body 也傳給 fingerprint helper（讀 body.clientId）
+        const clientId = getClientIP(e, body);
         if (!checkRateLimit(clientId)) {
             return jsonResponse({ error: "請求過於頻繁，請稍後再試" });
         }
@@ -980,51 +1029,78 @@ function saveFeedback(body) {
     // 截斷過長輸入防止塞爆 Sheet
     const truncate = (s, max) => String(s || "").substring(0, max);
 
-    const ss = getSpreadsheet();
-    let sheet = ss.getSheetByName(FEEDBACK_SHEET);
-
-    if (!sheet) {
-        sheet = ss.insertSheet(FEEDBACK_SHEET);
-        sheet.appendRow(["時間", "職類", "題目ID", "題目", "選項A", "選項B", "選項C", "選項D", "預設答案", "反饋類型", "補充說明", "已處理", "次數"]);
-        sheet.setFrozenRows(1);
-        const headerRange = sheet.getRange(1, 1, 1, 13);
-        headerRange.setBackground("#1a56db");
-        headerRange.setFontColor("#ffffff");
-        headerRange.setFontWeight("bold");
+    // 用 ScriptLock 包住「讀最近 50 行 → 判斷 dedup → append 或 update」，
+    // 避免兩筆同題反饋幾乎同時送進來時各自 append 或 count 互相覆蓋。
+    // 最多等 10 秒；拿不到鎖 → 直接 append（容忍小機率重複，比丟掉反饋好）。
+    var lock = null;
+    try { lock = LockService.getScriptLock(); } catch (_) {}
+    var haveLock = false;
+    if (lock) {
+        // tryLock 回 boolean：true = 拿到、false = 等待 10 秒仍拿不到（不 throw）
+        try { haveLock = lock.tryLock(10000); } catch (_) { haveLock = false; }
     }
 
-    // 去重：檢查最近 50 行是否有相同 題目ID + 反饋類型
-    const lastRow = sheet.getLastRow();
-    const checkRows = Math.min(50, lastRow - 1);
-    if (checkRows > 0) {
-        const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 13).getValues();
-        for (let i = data.length - 1; i >= 0; i--) {
-            if (String(data[i][2]) === String(body.questionId) && data[i][9] === (body.feedbackType || "")) {
-                // 找到重複，更新次數
-                const row = lastRow - checkRows + 1 + i;
-                const currentCount = Number(data[i][12]) || 1;
-                sheet.getRange(row, 13).setValue(currentCount + 1);
-                sheet.getRange(row, 1).setValue(toTaiwanTime(body.timestamp));
-                return;
+    try {
+        const ss = getSpreadsheet();
+        let sheet = ss.getSheetByName(FEEDBACK_SHEET);
+
+        if (!sheet) {
+            sheet = ss.insertSheet(FEEDBACK_SHEET);
+            sheet.appendRow(["時間", "職類", "題目ID", "題目", "選項A", "選項B", "選項C", "選項D", "預設答案", "反饋類型", "補充說明", "已處理", "次數"]);
+            sheet.setFrozenRows(1);
+            const headerRange = sheet.getRange(1, 1, 1, 13);
+            headerRange.setBackground("#1a56db");
+            headerRange.setFontColor("#ffffff");
+            headerRange.setFontWeight("bold");
+        }
+
+        // 答案欄位最大長度（複選題 A+B+C+D 串接最多 4 字，留 8 字緩衝避免截斷）
+        const ANSWER_MAX = 8;
+        const newAnswer = truncate(body.answer, ANSWER_MAX);
+
+        // 去重：檢查最近 50 行是否有相同 題目ID + 反饋類型
+        const lastRow = sheet.getLastRow();
+        const checkRows = Math.min(50, lastRow - 1);
+        if (checkRows > 0) {
+            const data = sheet.getRange(lastRow - checkRows + 1, 1, checkRows, 13).getValues();
+            for (let i = data.length - 1; i >= 0; i--) {
+                if (String(data[i][2]) === String(body.questionId) && data[i][9] === (body.feedbackType || "")) {
+                    // 找到重複，更新次數與時間
+                    const row = lastRow - checkRows + 1 + i;
+                    const currentCount = Number(data[i][12]) || 1;
+                    sheet.getRange(row, 13).setValue(currentCount + 1);
+                    sheet.getRange(row, 1).setValue(toTaiwanTime(body.timestamp));
+                    // 補回缺失的「預設答案」(第 9 欄)：若舊行空白且新請求帶有答案，回填
+                    // 解決歷史反饋記錄因 truncate(body.answer,2) bug 累積的空答案
+                    const existingAnswer = String(data[i][8] || "");
+                    if (!existingAnswer && newAnswer) {
+                        sheet.getRange(row, 9).setValue(newAnswer);
+                    }
+                    return;
+                }
             }
         }
-    }
 
-    sheet.appendRow([
-        toTaiwanTime(body.timestamp),
-        truncate(body.catName, 50),
-        body.questionId || "",
-        truncate(body.question, 500),
-        truncate(body.optionA, 200),
-        truncate(body.optionB, 200),
-        truncate(body.optionC, 200),
-        truncate(body.optionD, 200),
-        truncate(body.answer, 2),
-        truncate(body.feedbackType, 20),
-        truncate(body.description, 1000),
-        "否",
-        1,
-    ]);
+        sheet.appendRow([
+            toTaiwanTime(body.timestamp),
+            truncate(body.catName, 50),
+            body.questionId || "",
+            truncate(body.question, 500),
+            truncate(body.optionA, 200),
+            truncate(body.optionB, 200),
+            truncate(body.optionC, 200),
+            truncate(body.optionD, 200),
+            newAnswer,
+            truncate(body.feedbackType, 20),
+            truncate(body.description, 1000),
+            "否",
+            1,
+        ]);
+    } finally {
+        if (haveLock && lock) {
+            try { lock.releaseLock(); } catch (_) {}
+        }
+    }
 }
 
 // ─────────────────────────── 測驗統計 ────────────────────────────

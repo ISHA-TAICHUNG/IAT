@@ -27,7 +27,7 @@ let timerSeconds = modeConfig.time * 60;
 async function resolveCatDisplayName(catId) {
     try {
         const res = await fetchWithTimeout(
-            `${CONFIG.GAS_URL}?action=categories&token=${CONFIG.API_TOKEN}`
+            `${CONFIG.GAS_URL}?action=categories&token=${CONFIG.API_TOKEN}&clientId=${encodeURIComponent(getOrCreateClientId())}`
         );
         if (!res.ok) return catId;
         const cats = await res.json();
@@ -85,7 +85,7 @@ async function init() {
             const _useFull = _hasRule && (EXAM_MODE === 'normal' || EXAM_MODE === 'mock');
             const _fullParam = _useFull ? '&full=1' : '';
             const res = await fetchWithTimeout(
-                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}${_fullParam}`
+                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}&clientId=${encodeURIComponent(getOrCreateClientId())}${_fullParam}`
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
@@ -411,12 +411,16 @@ function handleKey(e) {
     if (document.getElementById("end-confirm-modal")?.classList.contains("open")) return;
     if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
     if (e.key === "ArrowRight" || e.key === "Enter") {
-        // 複選題必須 submitted 或 hinted 才能前進，避免跳過判分
+        // 複選題：
+        // - normal/speed 模式必須 submitted 或 hinted 才能前進（避免跳過判分）
+        // - mock 模式（模擬考）無立即判分，只要 chosen 非空就可前進
         const q = questions[current];
         const ans = answers[current];
         const isMulti = !!q.multi || Array.isArray(q.answer);
+        const isMock = EXAM_MODE === 'mock';
+        const chosenArr = getChosenArr(ans.chosen);
         const canAdvance = isMulti
-            ? (ans.submitted === true || ans.hinted)
+            ? (isMock ? chosenArr.length > 0 : (ans.submitted === true || ans.hinted))
             : (ans.chosen !== null || ans.hinted);
         if (canAdvance) nextQ();
     }
@@ -425,12 +429,19 @@ function handleKey(e) {
 
 function updateHeader() {
     document.getElementById("q-current").textContent = current + 1;
-    // 複選題需 submitted；單選題只要 chosen 或 hinted 即算已答
+    // 複選題：
+    // - normal/speed 需 submitted（送出判分後才算已答）
+    // - mock 模式無立即判分，只要 chosen 有任何選擇就算已答
+    // 單選題：只要 chosen 或 hinted 即算已答
+    const isMock = EXAM_MODE === 'mock';
     const answered = answers.filter((a, i) => {
         if (a.hinted) return true;
         const q = questions[i];
         const isMulti = !!q.multi || Array.isArray(q.answer);
-        return isMulti ? (a.submitted === true) : (a.chosen !== null);
+        if (isMulti) {
+            return isMock ? (getChosenArr(a.chosen).length > 0) : (a.submitted === true);
+        }
+        return a.chosen !== null;
     }).length;
     document.getElementById("answered-count").textContent = answered;
     document.getElementById("progress-bar").style.width =
@@ -502,6 +513,7 @@ function finishExam() {
         navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
             action: "logResult",
             token: CONFIG.API_TOKEN,
+            clientId: getOrCreateClientId(),  // GAS rate-limit per-client 配額
             catId: CAT_ID,
             score,
             correct: realCorrect,
@@ -523,6 +535,7 @@ function finishExam() {
             navigator.sendBeacon(CONFIG.GAS_URL, JSON.stringify({
                 action: "logAnswers",
                 token: CONFIG.API_TOKEN,
+                clientId: getOrCreateClientId(),  // GAS rate-limit per-client 配額
                 catId: CAT_ID,
                 answers: answerDetails,
             }));

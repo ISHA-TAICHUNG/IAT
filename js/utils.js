@@ -1,5 +1,38 @@
 // ===== 共用工具函式 =====
 
+/**
+ * 取得（或產生）此瀏覽器的 clientId（localStorage UUID）
+ * 給 GAS rate limit 用：每個 client 有自己的 20 req/min 配額。
+ * 若 localStorage 不可用（隱私模式 / iframe）會 fallback 為單次 session id。
+ */
+function getOrCreateClientId() {
+    var KEY = 'exam_client_id';
+    try {
+        var existing = localStorage.getItem(KEY);
+        if (existing && /^[a-zA-Z0-9_-]{8,64}$/.test(existing)) return existing;
+        // 產 RFC4122 v4 UUID（前綴 c_ 易識別）
+        var uuid;
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            uuid = window.crypto.randomUUID();
+        } else {
+            uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = (Math.random() * 16) | 0;
+                var v = c === 'x' ? r : (r & 0x3) | 0x8;
+                return v.toString(16);
+            });
+        }
+        var id = 'c_' + uuid.replace(/-/g, '').slice(0, 32);
+        localStorage.setItem(KEY, id);
+        return id;
+    } catch (_) {
+        // 隱私模式或受限環境：fallback 為 page session 隨機（不持久但仍能分流）
+        if (!window.__examSessionClientId) {
+            window.__examSessionClientId = 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        }
+        return window.__examSessionClientId;
+    }
+}
+
 /** 取得特定職類的及格分數（支援 PASS_SCORE_BY_CAT 覆蓋） */
 function getPassScore(catId) {
     if (catId && CONFIG.PASS_SCORE_BY_CAT && CONFIG.PASS_SCORE_BY_CAT[catId] !== undefined) {
@@ -330,6 +363,7 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
     var feedbackPayload = {
         action: "feedback",
         token: CONFIG.API_TOKEN,
+        clientId: getOrCreateClientId(),  // GAS rate-limit per-client 配額
         timestamp: new Date().toISOString(),
         catName: catName,
         questionId: questionId,
@@ -338,7 +372,20 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
         optionB: options ? options[1] || "" : "",
         optionC: options ? options[2] || "" : "",
         optionD: options ? options[3] || "" : "",
-        answer: answer != null ? LABELS[answer] : "",
+        // 答案：單選回 "A"/"B"/"C"/"D"；複選回 "AC"（多個字母串接，Sheet 「預設答案」欄位可讀）
+        // 安全處理 number / array / null / undefined 四種輸入
+        answer: (function() {
+            if (answer === null || answer === undefined) return "";
+            if (Array.isArray(answer)) {
+                return answer
+                    .slice()
+                    .sort(function(a, b) { return a - b; })
+                    .map(function(i) { return LABELS[i] || ""; })
+                    .filter(function(s) { return s; })
+                    .join("");
+            }
+            return LABELS[answer] || "";
+        })(),
         feedbackType: type,
         description: desc,
     };
@@ -369,6 +416,11 @@ async function submitFeedbackCommon({ catName, questionId, questionText, options
 async function flushFeedbackQueue() {
     var queue = JSON.parse(localStorage.getItem("feedback_queue") || "[]");
     if (queue.length === 0) return;
+    // Legacy payload 補 clientId：舊版本 queued 沒有 clientId 欄位，補上避免進 "anon" bucket
+    var clientId = getOrCreateClientId();
+    queue.forEach(function(payload) {
+        if (payload && !payload.clientId) payload.clientId = clientId;
+    });
     var results = await Promise.allSettled(queue.map(function(payload) {
         return fetch(CONFIG.GAS_URL, {
             method: "POST",
