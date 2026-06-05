@@ -10,6 +10,7 @@
   var form = document.getElementById('queryForm');
   if (!form) return; // 非 query 頁面，跳過初始化
   var nameInput = document.getElementById('qName');
+  var last2Input = document.getElementById('qLast2');
   var btn = document.getElementById('qBtn');
   var btnText = document.getElementById('qBtnText');
   var errDiv = document.getElementById('qError');
@@ -29,19 +30,25 @@
   nameInput.focus();
 
   // 事件綁定
+  last2Input.addEventListener('input', function(e) {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 2);
+  });
+
   form.addEventListener('submit', function(e) {
     e.preventDefault();
     if (searching) return;
     var name = nameInput.value.trim();
-    if (!validate(name)) return;
+    var last2 = last2Input.value.trim();
+    if (!validate(name, last2)) return;
     hideError();
-    doSearch(name);
+    doSearch(name, last2);
   });
 
   historyTags.addEventListener('click', function(e) {
     var tag = e.target.closest('.history-tag');
     if (tag) {
-      nameInput.value = tag.textContent;
+      nameInput.value = tag.dataset.name || '';
+      last2Input.value = tag.dataset.last2 || '';
       form.dispatchEvent(new Event('submit'));
     }
   });
@@ -53,7 +60,7 @@
   });
 
   // 驗證
-  function validate(name) {
+  function validate(name, last2) {
     if (!name) { showError('請輸入姓名'); return false; }
     if (name.length < 2) { showError('姓名至少 2 個字元'); return false; }
     if (name.length > 20) { showError('姓名不能超過 20 字元'); return false; }
@@ -61,6 +68,8 @@
       showError('姓名只能包含中文、英文和數字');
       return false;
     }
+    if (!last2) { showError('請輸入身分證末 2 碼'); return false; }
+    if (!/^\d{2}$/.test(last2)) { showError('末 2 碼應為 2 位數字'); return false; }
     return true;
   }
 
@@ -74,14 +83,15 @@
   }
 
   // 查詢
-  async function doSearch(name) {
+  async function doSearch(name, last2) {
     searching = true;
     btn.disabled = true;
     btnText.textContent = '查詢中...';
     resultsDiv.textContent = '';
 
     // 快取
-    var cached = cache.get(name);
+    var cacheKey = name + '|' + last2;
+    var cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       renderResults(cached.data);
       showToast('使用快取資料');
@@ -96,7 +106,12 @@
       var resp = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ name: name, exactMatch: true }),
+        body: JSON.stringify({
+          name: name,
+          last2: last2,
+          exactMatch: true,
+          clientId: getOrCreateClientId()
+        }),
         signal: controller.signal
       });
       clearTimeout(timer);
@@ -105,9 +120,9 @@
       var data = await resp.json();
 
       if (data.success && data.data && data.data.length > 0) {
-        cache.set(name, { data: data, ts: Date.now() });
+        cache.set(cacheKey, { data: data, ts: Date.now() });
         renderResults(data);
-        addHistory(name);
+        addHistory(name, last2);
         showToast('查詢成功，找到 ' + data.data.length + ' 筆');
       } else {
         renderNoResult();
@@ -213,7 +228,7 @@
     div.appendChild(h3);
 
     var p1 = document.createElement('p');
-    p1.textContent = '可能測驗資訊尚未發布（通常開考前 10 個工作天），或姓名輸入有誤。';
+    p1.textContent = '可能測驗資訊尚未發布（通常開考前 10 個工作天），或姓名、身分證末 2 碼輸入有誤。';
     div.appendChild(p1);
 
     var p2 = document.createElement('p');
@@ -269,15 +284,21 @@
 
   // 搜尋歷史
   function loadHistory() {
-    try { return JSON.parse(localStorage.getItem('query_history') || '[]'); }
+    try { localStorage.removeItem('query_history'); } catch(e) {}
+    try {
+      return JSON.parse(sessionStorage.getItem('query_history_v2') || '[]').filter(function(h) {
+        return h && typeof h !== 'string' && h.name && /^\d{2}$/.test(h.last2 || '');
+      });
+    }
     catch(e) { return []; }
   }
 
-  function addHistory(name) {
-    history = history.filter(function(h) { return h !== name; });
-    history.unshift(name);
+  function addHistory(name, last2) {
+    var key = name + '|' + last2;
+    history = history.filter(function(h) { return (h.name + '|' + h.last2) !== key; });
+    history.unshift({ name: name, last2: last2 });
     history = history.slice(0, MAX_HISTORY);
-    try { localStorage.setItem('query_history', JSON.stringify(history)); } catch(e) {}
+    try { sessionStorage.setItem('query_history_v2', JSON.stringify(history)); } catch(e) {}
     renderHistory();
   }
 
@@ -285,10 +306,13 @@
     if (!history.length) { historyDiv.style.display = 'none'; return; }
     historyDiv.style.display = '';
     historyTags.textContent = '';
-    history.forEach(function(name) {
+    history.forEach(function(h) {
+      if (!h || typeof h === 'string') return;
       var tag = document.createElement('button');
       tag.className = 'history-tag';
-      tag.textContent = name;
+      tag.textContent = h.name + ' (**' + h.last2 + ')';
+      tag.dataset.name = h.name;
+      tag.dataset.last2 = h.last2;
       tag.type = 'button';
       historyTags.appendChild(tag);
     });
