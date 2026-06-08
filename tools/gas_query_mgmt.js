@@ -29,6 +29,12 @@ var 日誌表_ID = '1KyscXS7YdKsGuI6wijiTxiNO5EpEEOwVtQtDI066Es0';
 // 日誌記錄在試算表中的工作表名稱
 var 日誌工作表名稱 = '查詢記錄';
 
+// 查詢節流：前端會送 getOrCreateClientId() 產生的 clientId；惡意或髒值會退回 anon。
+var CLIENT_ID_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
+var RATE_LIMIT = 20;
+var GLOBAL_RATE_LIMIT = 200;
+var RATE_WINDOW_SECONDS = 60;
+
 // =================================================================
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ 【系統核心設定】 ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 // =================================================================
@@ -146,6 +152,18 @@ function doPost(e) {
     if (!/^\d{2}$/.test(身分證末2碼)) {
       throw new Error('請輸入身分證末 2 碼。');
     }
+
+    if (!檢查查詢頻率限制(取得客戶端指紋(前端傳來的資料))) {
+      查詢日誌資料.resultStatus = '頻率限制';
+      查詢日誌資料.errorMessage = '查詢過於頻繁，請稍後再試。';
+      寫入查詢日誌(查詢日誌資料);
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          error: '查詢過於頻繁，請稍後再試。'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     var 查詢結果 = 在TXT檔中搜尋姓名與末2碼(查詢姓名, 身分證末2碼);
     
@@ -172,6 +190,46 @@ function doPost(e) {
         error: '伺服器處理錯誤: ' + 錯誤.message
       }))
       .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function 取得客戶端指紋(前端傳來的資料) {
+  try {
+    var bodyId = (前端傳來的資料 && 前端傳來的資料.clientId) ? String(前端傳來的資料.clientId).slice(0, 64) : '';
+    if (bodyId && !CLIENT_ID_PATTERN.test(bodyId)) bodyId = '';
+
+    var sessionKey = '';
+    try { sessionKey = Session.getTemporaryActiveUserKey() || ''; } catch (_) {}
+
+    var raw = bodyId || sessionKey || 'anon';
+    return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, raw)
+      .map(function(b) {
+        return (b < 0 ? b + 256 : b).toString(16).padStart(2, '0');
+      })
+      .join('')
+      .substring(0, 12);
+  } catch (_) {
+    return 'anon';
+  }
+}
+
+function 檢查查詢頻率限制(客戶端指紋) {
+  try {
+    var cache = CacheService.getScriptCache();
+    var globalKey = 'mgmt_query_rl_global';
+    var globalCount = Number(cache.get(globalKey)) || 0;
+    if (globalCount >= GLOBAL_RATE_LIMIT) return false;
+
+    var clientKey = 'mgmt_query_rl_' + (客戶端指紋 || 'anon');
+    var clientCount = Number(cache.get(clientKey)) || 0;
+    if (clientCount >= RATE_LIMIT) return false;
+
+    cache.put(clientKey, String(clientCount + 1), RATE_WINDOW_SECONDS);
+    cache.put(globalKey, String(globalCount + 1), RATE_WINDOW_SECONDS);
+    return true;
+  } catch (_) {
+    // CacheService 短暫失效時不阻斷查詢；GAS 例外會進 Logger 但使用者仍可查。
+    return true;
   }
 }
 

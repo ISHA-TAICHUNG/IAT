@@ -5,3 +5,7 @@ __pycache__/
 .env
 data/
 .claude_review_state.json
+tools/admin_wrapper.gs
+tools/batch_append_corrections.gs
+tools/batch_update_feedback.gs
+tools/debug_check.js

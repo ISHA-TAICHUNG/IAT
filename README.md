@@ -21,13 +21,15 @@
 - 💾 **中途存檔**：作答進度自動存檔，下次進站可選擇繼續
 - 🌙 **深色模式**：一鍵切換深色/淺色主題，自動記住偏好
 - 💬 作答中 & 成績頁均可送出反饋 → 自動記錄至 Google Sheet（含題目、四個選項、預設答案，自動去重）
+- 🔎 管理職類測驗日期查詢：姓名 + 身分證末 2 碼，後端直接讀「成績單簽收總表」TXT
+- 🔎 即測即評測驗日期查詢：姓名 + 身分證末 4 碼，查詢學科 / 術科場次
 - ⌨️ 鍵盤快捷鍵（`1-4` 選答、`→` 下一題、`←` 上一題、`Enter` 確認）
 - 📋 進站須知 & 測驗前須知雙 Modal 提醒
 - 📱 **PWA 離線支援**：可加到手機主畫面，離線也能作答
 - 📝 Google Sheet 題庫管理面板（修正題目 / 新增題目 / 刪除題目 / 自動備份）
 - 📊 **測驗統計**：每次交卷自動回報至 Google Sheet（職類 / 分數 / 用時 / 模式），模式以中文顯示（標準模式 / 急速模式）
 - 🔒 **API Token 驗證**：GAS 後端所有請求需帶 Token，防止題庫被盜取
-- 🛡️ **Rate Limit**：每分鐘每用戶最多 30 次請求，防止惡意爬取
+- 🛡️ **Rate Limit**：依 API 類型分別限制單一 client 與全站請求量，防止惡意爬取
 
 ---
 
@@ -48,7 +50,7 @@ Google Sheet (反饋紀錄 + 測驗統計)
 
 - 前端所有 API 請求自動帶上 `API_TOKEN`（GET 加 query param / POST 加 body）
 - GAS 後端 `doGet` / `doPost` 驗證 Token，無效則回傳 403
-- Rate Limit：每分鐘同一用戶最多 30 次請求，超過則回傳 429
+- Rate Limit：主題庫與日期查詢後端皆有單一 client / 全站節流，過量會回傳「請稍後再試」
 - `catId` 格式驗證，反饋欄位長度截斷，防止注入攻擊
 
 ---
@@ -57,7 +59,7 @@ Google Sheet (反饋紀錄 + 測驗統計)
 
 ### 1. 上傳題庫到 Google Drive
 
-1. 執行 `python3 tools/convert_xlsx.py`（產出到 `data/`）
+1. 依現行題庫轉檔流程產出 `data/*.json`
 2. 在 Google Drive 建立一個**私人**資料夾
 3. 將 `data/` 裡所有 `.json` 檔上傳（含 `categories.json`）
 4. 記下資料夾 URL 裡的 **Folder ID**
@@ -156,7 +158,7 @@ Google Sheet (反饋紀錄 + 測驗統計)
 
 ## 題庫更新流程
 
-1. 更新 xlsx → 執行 `python3 tools/convert_xlsx.py`
+1. 更新來源檔 → 依現行題庫轉檔流程產出 JSON
 2. 重新上傳 `data/*.json` 到 Google Drive（覆蓋舊檔）
 3. GAS 快取 6 小時自動更新，或重新部署 GAS 立即生效
 
@@ -183,6 +185,8 @@ exam-site/
 ├── index.html               首頁（選職類 + 模式選擇 + 進站須知 + 測驗前須知 + 歷史成績 + 存檔恢復）
 ├── exam.html                作答頁（倒計時 + 導覽列 + 書籤 + 提前結束 Modal + 反饋 Modal）
 ├── result.html              成績頁（錯題列表 + 錯題複習 + 歷史紀錄 + 反饋 Modal）
+├── query.html               管理職類測驗日期查詢（姓名 + 身分證末 2 碼）
+├── exam-query.html          即測即評測驗日期查詢（姓名 + 身分證末 4 碼）
 ├── manifest.json            PWA 配置
 ├── sw.js                    Service Worker（離線快取）
 ├── icons/                   PWA 圖示
@@ -192,11 +196,15 @@ exam-site/
 │   ├── utils.js             共用工具（XSS跳脫、fetchTimeout+自動Token、shuffle、深色模式、書籤、存檔、反饋）
 │   ├── app.js               首頁邏輯（下拉選單、模式選擇、須知彈窗、翻譯、歷史、存檔恢復）
 │   ├── exam.js              作答核心（選題、計分、倒計時、導覽列、書籤、反饋、存檔、鍵盤）
-│   └── result.js            成績計算（成績渲染、錯題反饋、歷史儲存、錯題複習）
+│   ├── result.js            成績計算（成績渲染、錯題反饋、歷史儲存、錯題複習）
+│   ├── query.js             管理職類測驗日期查詢前端
+│   └── exam-query.js        即測即評測驗日期查詢前端
 ├── data/
 │   ├── categories.json      職類清單
 │   └── *.json               各職類題庫（上傳至 Google Drive）
 └── tools/
-    ├── convert_xlsx.py      xlsx → json 轉檔工具
-    └── gas_backend.js       GAS 後端範本（題庫代理 + Token驗證 + Rate Limit + 反饋去重 + 修正 + 新增 + 備份 + 統計）
+    ├── convert.py           即測即評查詢資料轉檔工具
+    ├── gas_backend.js       GAS 後端範本（題庫代理 + Token驗證 + Rate Limit + 反饋去重 + 修正 + 新增 + 備份 + 統計）
+    ├── gas_query_mgmt.js    管理職類測驗日期查詢 GAS（讀成績單簽收總表 TXT）
+    └── gas_exam_query.js    即測即評測驗日期查詢 GAS（讀報檢 CSV）
 ```

@@ -20,7 +20,6 @@
 // ======== 設定區 ========
 var CONFIG = {
   DRIVE_FOLDER_ID: '1m25N871mzri19gvM63FD1cYDoyQvp2rl', // Google Drive 資料夾 ID
-  DEBUG_TOKEN: 'ZmBIGjWRJXn3R2ejc-XE6A', // 除錯 token（僅開發者知道）
   CACHE_TTL: 300, // 查詢結果快取 5 分鐘
   RATE_LIMIT: 30, // 每分鐘每個 idno 最多 30 次
   GLOBAL_RATE_LIMIT: 300, // 全站每分鐘最多 300 次（防止 idno 輪替攻擊）
@@ -120,15 +119,6 @@ function doPost(e) {
     var params = JSON.parse(e.postData.contents);
     var action = params.action || 'examQuery';
 
-    // 管理端點：上傳新 CSV 到 Drive（覆蓋舊檔）
-    // 需帶 adminToken = DEBUG_TOKEN 才能呼叫
-    if (action === 'adminReplaceCsv') {
-      if (params.adminToken !== CONFIG.DEBUG_TOKEN) {
-        return jsonResponse({ success: false, error: '授權失敗' });
-      }
-      return adminReplaceCsv(params.filename, params.content);
-    }
-
     if (action !== 'examQuery') {
       return jsonResponse({ success: false, error: 'Invalid action' });
     }
@@ -164,47 +154,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  // 除錯模式：需要 debug token（只有開發者知道）
-  if (e && e.parameter && e.parameter.debug === CONFIG.DEBUG_TOKEN) {
-    return debugInfo();
-  }
   return jsonResponse({ success: true, message: '即測即評查詢 API 運作中' });
-}
-
-// 除錯函式：需要正確 token 才能呼叫（僅顯示筆數、不顯示內容）
-function debugInfo() {
-  var info = {
-    success: true,
-    folder_name: '',
-    files_count: 0,
-    registrations_count: 0,
-    written_count: 0,
-    errors: []
-  };
-
-  try {
-    var folder = DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
-    info.folder_name = folder.getName();
-    var iter = folder.getFiles();
-    while (iter.hasNext()) { iter.next(); info.files_count++; }
-  } catch (e) {
-    info.errors.push('Folder: ' + e.message);
-  }
-
-  try {
-    info.registrations_count = loadRegistrations().length;
-  } catch (e) {
-    info.errors.push('Registrations: ' + e.message);
-  }
-
-  try {
-    var wi = loadWrittenIndex();
-    info.written_count = Object.keys(wi).length;
-  } catch (e) {
-    info.errors.push('Written: ' + e.message);
-  }
-
-  return jsonResponse(info);
 }
 
 // ======== 查詢邏輯 ========
@@ -284,49 +234,6 @@ function trackQueryKey(key) {
       props.setProperty('query_keys', JSON.stringify(set));
     }
   } catch (e) { /* 非關鍵錯誤，忽略 */ }
-}
-
-// ======== 管理功能 ========
-// 上傳/覆蓋 Drive 上的 CSV（呼叫前需驗證 DEBUG_TOKEN）
-function adminReplaceCsv(filename, content) {
-  if (!filename || !content) {
-    return jsonResponse({ success: false, error: '缺少 filename 或 content' });
-  }
-  // 白名單 — 只允許覆蓋這兩個檔名
-  var allowed = ['報檢資料.csv', '學科報檢資料.csv'];
-  if (allowed.indexOf(filename) < 0) {
-    return jsonResponse({ success: false, error: '檔名不在白名單內: ' + filename });
-  }
-  try {
-    var folder = DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
-    var iter = folder.getFilesByName(filename);
-    var file = null;
-    while (iter.hasNext()) {
-      file = iter.next();
-      break;
-    }
-    if (file) {
-      // 直接覆蓋內容（備份交由客戶端處理，減少 scope 需求）
-      file.setContent(content);
-    } else {
-      folder.createFile(filename, content, 'text/csv');
-    }
-    // 清查詢快取（因資料已變）
-    var cache = CacheService.getScriptCache();
-    var props = PropertiesService.getScriptProperties();
-    var keysJson = props.getProperty('query_keys');
-    var keys = keysJson ? JSON.parse(keysJson) : [];
-    keys.forEach(function (k) { try { cache.remove(k); } catch (e) {} });
-    props.setProperty('query_keys', '[]');
-    return jsonResponse({
-      success: true,
-      filename: filename,
-      bytes: content.length,
-      action: file ? 'replaced' : 'created'
-    });
-  } catch (err) {
-    return jsonResponse({ success: false, error: err.message || String(err) });
-  }
 }
 
 // ======== 資料載入 ========

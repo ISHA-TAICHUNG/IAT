@@ -5,7 +5,7 @@ const CONFIG = {
     GAS_URL: "https://script.google.com/macros/s/AKfycbxEzEoPGPUZNcSGRHQcsACTn0TdEYbDG-cfpL22NH3p7EdjNOeQ6TduI9RjfybTd2fg/exec",
 
     // API 存取令牌（與 GAS 端一致）
-    API_TOKEN: "IAT_2026_s3cUr3T0k3n_xK9mP7",
+    API_TOKEN: "IAT_2026_s3cUr3T0k3n_xK9mP7", // gitleaks:allow — 前端公開 token，安全邊界在 GAS rate limit 與只讀/寫入路由控管
 
     // 滿分
     FULL_SCORE: 100,
