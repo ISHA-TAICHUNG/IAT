@@ -9,3 +9,10 @@ tools/admin_wrapper.gs
 tools/batch_append_corrections.gs
 tools/batch_update_feedback.gs
 tools/debug_check.js
+
+# GAS 後端 source（含真實 Drive/Sheet ID、admin 端點結構，不應公開）
+tools/gas_backend.js
+tools/gas_exam_query.js
+tools/gas_query_mgmt.js
+# 轉檔工具 macOS app bundle（二進位，不需版控）
+tools/資料轉檔工具.app/
