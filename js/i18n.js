@@ -5,7 +5,7 @@ const LANGS = {
   'vi':    { label: 'Tiếng Việt', flag: '🇻🇳', native: 'Tiếng Việt' },
   'id':    { label: 'Bahasa Indonesia', flag: '🇮🇩', native: 'Indonesia' },
   'th':    { label: 'ภาษาไทย', flag: '🇹🇭', native: 'ไทย' },
-  'en':    { label: 'English', flag: '🇵🇭', native: 'English' },
+  'en':    { label: 'Filipino', flag: '🇵🇭', native: 'Filipino' },  // 菲律賓入口:UI字串暫維持英文,題庫為Tagalog(_菲律賓)
 };
 
 // 語言 → 題庫 ID 後綴對應
