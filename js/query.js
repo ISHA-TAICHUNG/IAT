@@ -5,7 +5,9 @@
   var API_URL = 'https://script.google.com/macros/s/AKfycbyfN0Soku5MzYi-VXy2h5Hkn6TrCocmONnzM-jQ1wdE2ANOsaPlgyxx7aX38o5I7a1v/exec';
   var CACHE_TTL = 300000;
   var MAX_HISTORY = 5;
-  var TIMEOUT = 15000;
+  var REQUEST_TIMEOUT = 30000;
+  var MAX_ATTEMPTS = 2;
+  var RETRY_DELAY = 1200;
 
   var form = document.getElementById('queryForm');
   if (!form) return; // 非 query 頁面，跳過初始化
@@ -100,41 +102,77 @@
     }
 
     try {
-      var controller = new AbortController();
-      var timer = setTimeout(function() { controller.abort(); }, TIMEOUT);
-
-      var resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          name: name,
-          last2: last2,
-          exactMatch: true,
-          clientId: getOrCreateClientId()
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timer);
-
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      var data = await resp.json();
+      var data = await fetchQuery(name, last2);
 
       if (data.success && data.data && data.data.length > 0) {
         cache.set(cacheKey, { data: data, ts: Date.now() });
         renderResults(data);
         addHistory(name, last2);
         showToast('查詢成功，找到 ' + data.data.length + ' 筆');
+      } else if (data.error) {
+        renderError(data.error);
       } else {
         renderNoResult();
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        renderError('請求逾時，請稍後再試');
+        renderError('查詢服務回應較慢，請稍後再試');
+      } else if (err.status === 429) {
+        renderError('查詢過於頻繁，請稍後再試');
       } else {
-        renderError('查詢失敗，請檢查網路連線');
+        renderError('查詢服務暫時無法連線，請稍後再試');
       }
     }
     done();
+  }
+
+  async function fetchQuery(name, last2) {
+    var lastError;
+    var payload = JSON.stringify({
+      name: name,
+      last2: last2,
+      exactMatch: true,
+      clientId: getOrCreateClientId()
+    });
+
+    for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      var controller = new AbortController();
+      var timer = setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT);
+
+      try {
+        var resp = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload,
+          cache: 'no-store',
+          signal: controller.signal
+        });
+
+        if (!resp.ok) {
+          var httpError = new Error('HTTP ' + resp.status);
+          httpError.status = resp.status;
+          httpError.retryable = resp.status === 404 || resp.status === 408 || resp.status >= 500;
+          throw httpError;
+        }
+
+        try {
+          return await resp.json();
+        } catch (parseError) {
+          parseError.retryable = true;
+          throw parseError;
+        }
+      } catch (err) {
+        lastError = err;
+        var canRetry = attempt < MAX_ATTEMPTS && (err.name === 'AbortError' || err.retryable || err instanceof TypeError);
+        if (!canRetry) throw err;
+        btnText.textContent = '服務重新連線中...';
+        await new Promise(function(resolve) { setTimeout(resolve, RETRY_DELAY); });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    throw lastError || new Error('查詢失敗');
   }
 
   function done() {
