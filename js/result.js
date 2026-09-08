@@ -239,8 +239,8 @@ if (wrongList.length > 0) {
 }
 
 // 歷史成績
-var history = getExamHistory();
-if (history.length > 1) {
+var examHistory = getExamHistory();
+if (examHistory.length > 1) {
   var hCard = document.createElement('div');
   hCard.className = 'history-card';
   var hH2 = document.createElement('h2');
@@ -249,7 +249,7 @@ if (history.length > 1) {
 
   var hList = document.createElement('div');
   hList.className = 'history-list';
-  history.slice(0, 10).forEach(function(h, idx) {
+  examHistory.slice(0, 10).forEach(function(h, idx) {
     var hi = document.createElement('div');
     hi.className = 'history-item' + (idx === 0 ? ' latest' : '');
 
