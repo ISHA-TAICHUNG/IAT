@@ -28,6 +28,37 @@ function getForeignLabel(catName) {
   return null;
 }
 
+// 中文下拉選單先列本籍題庫，再依職類集中排列各外語版本。
+function orderChineseDropdownCategories(cats) {
+  var nativeCats = [];
+  var foreignGroups = [];
+
+  cats.forEach(function(cat) {
+    if (!getForeignLabel(cat.name)) {
+      nativeCats.push(cat);
+      return;
+    }
+
+    var job = JOB_EMOJI.find(function(item) {
+      return cat.name.includes(item.keyword);
+    });
+    var jobKey = job ? job.keyword : cat.name;
+    var group = foreignGroups.find(function(item) {
+      return item.jobKey === jobKey;
+    });
+
+    if (!group) {
+      group = { jobKey: jobKey, cats: [] };
+      foreignGroups.push(group);
+    }
+    group.cats.push(cat);
+  });
+
+  return nativeCats.concat.apply(nativeCats, foreignGroups.map(function(group) {
+    return group.cats;
+  }));
+}
+
 // ===== API =====
 var _allCategories = []; // 快取全部職類
 
@@ -173,7 +204,7 @@ function renderDropdown(cats) {
     groupOrder.filter(function(g) { return groups[g]; }).forEach(function(g) {
       var optgroup = document.createElement('optgroup');
       optgroup.label = t('group.' + g, g);
-      groups[g].forEach(function(cat) {
+      orderChineseDropdownCategories(groups[g]).forEach(function(cat) {
         var fl = getForeignLabel(cat.name);
         var jobEmoji = fl ? getJobEmoji(cat.name) : "";
         var labelText = fl ? jobEmoji + cat.name + "　" + fl.flag + " " + fl.native : cat.name;
