@@ -32,7 +32,11 @@ function getForeignLabel(catName) {
 var _allCategories = []; // 快取全部職類
 
 async function loadCategories() {
-  var res = await fetchWithTimeout(CONFIG.GAS_URL + "?action=categories&token=" + encodeURIComponent(CONFIG.API_TOKEN) + "&clientId=" + encodeURIComponent(getOrCreateClientId()));
+  var res = await fetchWithTimeout(
+    CONFIG.GAS_URL + "?action=categories&token=" + encodeURIComponent(CONFIG.API_TOKEN) + "&clientId=" + encodeURIComponent(getOrCreateClientId()),
+    {},
+    30000
+  );
   if (!res.ok) throw new Error("HTTP " + res.status);
   var data = await res.json();
   if (data.error) throw new Error(data.error);
