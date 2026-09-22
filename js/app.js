@@ -1,5 +1,6 @@
 // ===== 即測即評國籍翻譯對照 =====
 const LANG_LABELS = {
+  英文: { native: "English", flag: "🌐" },
   印尼: { native: "Bahasa Indonesia", flag: "🇮🇩" },
   菲律賓: { native: "Filipino", flag: "🇵🇭" },
   泰國籍: { native: "ภาษาไทย", flag: "🇹🇭" },

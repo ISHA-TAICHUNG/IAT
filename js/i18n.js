@@ -5,7 +5,8 @@ const LANGS = {
   'vi':    { label: 'Tiếng Việt', flag: '🇻🇳', native: 'Tiếng Việt' },
   'id':    { label: 'Bahasa Indonesia', flag: '🇮🇩', native: 'Indonesia' },
   'th':    { label: 'ภาษาไทย', flag: '🇹🇭', native: 'ไทย' },
-  'en':    { label: 'Filipino', flag: '🇵🇭', native: 'Filipino' },  // 菲律賓入口:UI字串暫維持英文,題庫為Tagalog(_菲律賓)
+  'en':    { label: 'English', flag: '🌐', native: 'English' },
+  'fil':   { label: 'Filipino', flag: '🇵🇭', native: 'Filipino' },
 };
 
 // 語言 → 題庫 ID 後綴對應
@@ -14,7 +15,8 @@ const LANG_CAT_SUFFIX = {
   'vi':    '_越南',
   'id':    '_印尼',
   'th':    '_泰國',
-  'en':    '_菲律賓',
+  'en':    '_英文',
+  'fil':   '_菲律賓',
 };
 
 // 職類名稱翻譯
@@ -194,11 +196,20 @@ const I18N = {
 
 // ===== 核心函式 =====
 function getLang() {
-  return localStorage.getItem('lang') || 'zh-TW';
+  var lang = localStorage.getItem('lang') || 'zh-TW';
+  // v1 的 en 實際指向菲律賓題庫；保留既有使用者的選擇，避免升版後被改成英文。
+  if (lang === 'en' && localStorage.getItem('lang_schema') !== '2') {
+    lang = 'fil';
+    localStorage.setItem('lang', lang);
+    localStorage.setItem('lang_schema', '2');
+  }
+  return LANGS[lang] ? lang : 'zh-TW';
 }
 
 function setLang(lang) {
+  if (!LANGS[lang]) return;
   localStorage.setItem('lang', lang);
+  localStorage.setItem('lang_schema', '2');
   applyI18n();
   window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
 }
@@ -207,7 +218,7 @@ function t(key, fallback) {
   var lang = getLang();
   var entry = I18N[key];
   if (!entry) return fallback || key;
-  return entry[lang] || entry['zh-TW'] || fallback || key;
+  return entry[lang] || (lang === 'fil' && entry.en) || entry['zh-TW'] || fallback || key;
 }
 
 function applyI18n() {
@@ -243,8 +254,8 @@ function translateCatName(catId, catName) {
   var lang = getLang();
   if (lang === 'zh-TW') return catName;
   for (var zhKey in CAT_NAMES) {
-    if (catId.indexOf(zhKey) >= 0 && CAT_NAMES[zhKey][lang]) {
-      return CAT_NAMES[zhKey][lang];
+    if (catId.indexOf(zhKey) >= 0) {
+      return CAT_NAMES[zhKey][lang] || (lang === 'fil' && CAT_NAMES[zhKey].en) || catName;
     }
   }
   return catName;
