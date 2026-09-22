@@ -85,7 +85,9 @@ async function init() {
             const _useFull = _hasRule && (EXAM_MODE === 'normal' || EXAM_MODE === 'mock');
             const _fullParam = _useFull ? '&full=1' : '';
             const res = await fetchWithTimeout(
-                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}&clientId=${encodeURIComponent(getOrCreateClientId())}${_fullParam}`
+                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}&clientId=${encodeURIComponent(getOrCreateClientId())}${_fullParam}`,
+                {},
+                30000
             );
             if (!res.ok) throw new Error("HTTP " + res.status);
             const data = await res.json();
