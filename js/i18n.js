@@ -172,6 +172,8 @@ const I18N = {
   'error.timeout': { 'zh-TW': '伺服器回應逾時，請稍後再試', vi: 'Máy chủ không phản hồi, thử lại', id: 'Server tidak merespons, coba lagi', th: 'เซิร์ฟเวอร์ไม่ตอบสนอง ลองใหม่', en: 'Server timed out, try again' },
   'error.load': { 'zh-TW': '載入題庫失敗：', vi: 'Tải thất bại:', id: 'Gagal memuat:', th: 'โหลดล้มเหลว:', en: 'Failed to load:' },
   'error.network': { 'zh-TW': '請確認網路連線正常或稍後再試。', vi: 'Kiểm tra kết nối mạng.', id: 'Periksa koneksi internet.', th: 'ตรวจสอบการเชื่อมต่อ', en: 'Check your internet connection.' },
+  'load.retry': { 'zh-TW': '重新載入', vi: 'Tải lại', id: 'Muat ulang', th: 'โหลดใหม่', en: 'Reload' },
+  'load.backup': { 'zh-TW': '已切換至最近 24 小時內的備援題庫', vi: 'Đang dùng bộ đề dự phòng trong 24 giờ', id: 'Menggunakan bank soal cadangan dalam 24 jam', th: 'ใช้คลังข้อสอบสำรองภายใน 24 ชั่วโมง', en: 'Using a question bank backup from the last 24 hours' },
   'error.back': { 'zh-TW': '← 返回首頁', vi: '← Về trang chủ', id: '← Ke beranda', th: '← กลับหน้าแรก', en: '← Back to home' },
   'image.modal.hint': { 'zh-TW': '點擊任意處關閉', vi: 'Nhấn để đóng', id: 'Klik untuk menutup', th: 'คลิกเพื่อปิด', en: 'Click to close' },
   'nav.exam': { 'zh-TW': '📝 測驗練習', vi: '📝 Luyện tập', id: '📝 Latihan', th: '📝 ฝึกฝน', en: '📝 Practice' },

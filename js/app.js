@@ -62,16 +62,8 @@ function orderChineseDropdownCategories(cats) {
 // ===== API =====
 var _allCategories = []; // 快取全部職類
 
-async function loadCategories() {
-  var res = await fetchWithTimeout(
-    CONFIG.GAS_URL + "?action=categories&token=" + encodeURIComponent(CONFIG.API_TOKEN) + "&clientId=" + encodeURIComponent(getOrCreateClientId()),
-    {},
-    30000
-  );
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  var data = await res.json();
-  if (data.error) throw new Error(data.error);
-  if (!Array.isArray(data)) throw new Error("Invalid format");
+async function loadCategories(force) {
+  var data = await loadCategoryData(force);
   _allCategories = data;
   return filterCategoriesByLang(data);
 }
@@ -418,6 +410,7 @@ if (sessionStorage.getItem("notice_seen")) {
 // ===== 語言切換事件 =====
 window.addEventListener('langchange', function() {
   // 語言切換時重新渲染
+  if (!_allCategories.length) return;
   var filtered = filterCategoriesByLang(_allCategories);
   renderDropdown(filtered);
   applyI18n();
@@ -425,7 +418,10 @@ window.addEventListener('langchange', function() {
 
 // ===== 初始化 =====
 if (typeof flushFeedbackQueue === 'function') flushFeedbackQueue();
-loadCategories()
+function initializeCategories(force) {
+  var wrap = document.getElementById('select-wrap');
+  wrap.textContent = t('select.loading');
+  return loadCategories(force)
   .then(renderDropdown)
   .catch(function(err) {
     // 載入失敗（網路或 GAS 異常）→ 顯示錯誤訊息給使用者
@@ -435,4 +431,7 @@ loadCategories()
     p.className = 'error-msg';
     p.textContent = t('error.load') + err.message + ' ' + t('error.network');
     wrap.appendChild(p);
+    appendLoadRetry(wrap, function() { initializeCategories(true); });
   });
+}
+initializeCategories(false);

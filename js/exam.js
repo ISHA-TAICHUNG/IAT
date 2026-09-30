@@ -26,12 +26,8 @@ let timerSeconds = modeConfig.time * 60;
 // 從 categories.json 取顯示名稱（id 可能是「移動式起重機_本籍」，name 是「移動式起重機操作人員（本籍）」）
 async function resolveCatDisplayName(catId) {
     try {
-        const res = await fetchWithTimeout(
-            `${CONFIG.GAS_URL}?action=categories&token=${CONFIG.API_TOKEN}&clientId=${encodeURIComponent(getOrCreateClientId())}`
-        );
-        if (!res.ok) return catId;
-        const cats = await res.json();
-        if (!Array.isArray(cats)) return catId;
+        const cached = readCategoryCache();
+        const cats = cached ? cached.data : await loadCategoryData(false);
         const found = cats.find(c => c.id === catId);
         return found ? found.name : catId;
     } catch (_) {
@@ -70,7 +66,17 @@ async function init() {
 
     try {
         // 解析顯示用的職類名稱（id 可能是「移動式起重機_本籍」，name 是「移動式起重機操作人員（本籍）」）
-        const displayName = await resolveCatDisplayName(CAT_ID);
+        // 名稱查詢與載題並行；名稱服務失敗仍可開始作答。
+        var displayName = CAT_ID;
+        resolveCatDisplayName(CAT_ID).then(function(name) {
+            displayName = name;
+            if (questions.length) {
+                catName = name + (MODE === 'review' ? t('exam.review.suffix') :
+                    EXAM_MODE === 'speed' ? t('exam.speed.suffix') : '');
+                document.title = catName + ' — ' + t('exam.title');
+                document.getElementById('exam-title').textContent = catName;
+            }
+        });
 
         if (MODE === "review") {
             // 錯題複習模式：從 sessionStorage 讀取錯題
@@ -83,16 +89,8 @@ async function init() {
             // 若該職類有特殊配比規則 (EXAM_RULES_BY_CAT) 且為 normal/mock 模式 → 取全題庫由前端自抽
             const _hasRule = CONFIG.EXAM_RULES_BY_CAT && CONFIG.EXAM_RULES_BY_CAT[CAT_ID];
             const _useFull = _hasRule && (EXAM_MODE === 'normal' || EXAM_MODE === 'mock');
-            const _fullParam = _useFull ? '&full=1' : '';
-            const res = await fetchWithTimeout(
-                `${CONFIG.GAS_URL}?action=questions&cat=${encodeURIComponent(CAT_ID)}&token=${encodeURIComponent(CONFIG.API_TOKEN)}&clientId=${encodeURIComponent(getOrCreateClientId())}${_fullParam}`,
-                {},
-                30000
-            );
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-            if (!Array.isArray(data)) throw new Error("Invalid data format");
+            const data = await loadPublicData('questions', Object.assign({ cat: CAT_ID },
+                _useFull ? { full: '1' } : {}));
 
             // 抽題策略（依優先序）：
             // 1) 特殊規則 (EXAM_RULES_BY_CAT)：normal/mock 模式按單選/複選分開抽
@@ -168,6 +166,11 @@ async function init() {
         var el = document.getElementById("loading");
         el.textContent = t('error.load') + e.message + ' ' + t('error.network');
         el.style.color = 'red';
+        appendLoadRetry(el, function() {
+            el.textContent = t('exam.loading');
+            el.style.color = '';
+            init();
+        });
     }
 }
 
