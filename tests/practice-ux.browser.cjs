@@ -10,6 +10,8 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 // 固定發布前基準，避免提交新版後 HEAD 跟著移動而失去舊版升級測試。
 const baselineRef = 'efbad62ac97d03f6825335d0220b967c6619a0c7';
+const currentVersion = fs.readFileSync(path.join(root, 'sw.js'), 'utf8')
+  .match(/exam-v(\d{8}[a-z])/)[1];
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'iat-practice-ux-'));
 const languages = ['zh-TW', 'vi', 'id', 'th', 'en', 'fil'];
 const suffixes = ['本籍', '越南', '印尼', '泰國', '英文', '菲律賓'];
@@ -41,7 +43,7 @@ function source(file) {
       "GAS_URL: '/api'").replace(/API_TOKEN:\s*["'][^"']+["']/, "API_TOKEN: 'ui-test'"));
   }
   if (stage === 'next' && file === 'sw.js') {
-    value = Buffer.from(value.toString().replace(/exam-v\d{8}[a-z]/, 'exam-v20261010a-ui-next'));
+    value = Buffer.from(value.toString().replace(/exam-v\d{8}[a-z]/, 'exam-v' + currentVersion + '-ui-next'));
   }
   sources.set(key, value);
   return value;
@@ -119,6 +121,17 @@ async function main() {
           sizes.push(await page.locator('.select-label').first().evaluate(el => parseFloat(getComputedStyle(el).fontSize)));
         }
         assert.ok(sizes[0] < sizes[1] && sizes[1] < sizes[2], 'Home font: ' + lang);
+        const fontButton = page.locator('.site-header .fontsize-btn');
+        for (const theme of ['light', 'dark']) {
+          await page.evaluate(theme => applyTheme(theme), theme);
+          await fontButton.hover();
+          const colors = await fontButton.evaluate(el => ({
+            text: getComputedStyle(el).color, background: getComputedStyle(el).backgroundColor,
+          }));
+          assert.equal(colors.text, 'rgb(255, 255, 255)', 'Header font text: ' + theme);
+          assert.equal(colors.background, 'rgba(255, 255, 255, 0.12)', 'Header font hover: ' + theme);
+        }
+        await page.evaluate(() => applyTheme('light'));
         await page.evaluate(saved => localStorage.setItem('exam_save', JSON.stringify(saved)), snapshot(lang));
         await page.goto(base + 'exam.html?cat=' + encodeURIComponent(snapshot(lang).catId));
         await page.locator('.option-btn').first().waitFor();
@@ -238,8 +251,8 @@ async function main() {
       await registration.update();
       await window.nextController;
     });
-    await app.waitForFunction(async () => (await caches.keys()).includes('exam-v20261010a') &&
-      !(await caches.keys()).includes('exam-v20260930a'));
+    await app.waitForFunction(async version => (await caches.keys()).includes('exam-v' + version) &&
+      !(await caches.keys()).includes('exam-v20260930a'), currentVersion);
     assert.equal(await app.evaluate(() => window.noReloadMarker), 'kept');
     await app.reload();
     await app.locator('#cat-select').waitFor();
@@ -249,7 +262,7 @@ async function main() {
         root: ((await (await caches.open(name)).match('./')) &&
           (await (await (await caches.open(name)).match('./')).text()).match(/style\.css\?v=\d+[a-z]/)?.[0]) }))),
     }));
-    assert.equal(await app.locator('link[href="css/style.css?v=20261010a"]').count(), 1,
+    assert.equal(await app.locator('link[href="css/style.css?v=' + currentVersion + '"]').count(), 1,
       'PWA version trace: ' + JSON.stringify(versions));
     await app.evaluate(saved => localStorage.setItem('exam_save', JSON.stringify(saved)), snapshot('zh-TW', 'mock'));
     await app.goto(base + 'exam.html?cat=' + encodeURIComponent(snapshot('zh-TW').catId) + '&examMode=mock');
@@ -273,7 +286,7 @@ async function main() {
     await pwa.setOffline(true);
     await app.reload();
     await app.locator('#resume-banner').waitFor();
-    assert.equal(await app.locator('link[href="css/style.css?v=20261010a"]').count(), 1);
+    assert.equal(await app.locator('link[href="css/style.css?v=' + currentVersion + '"]').count(), 1);
     await pwa.close();
     results.push({ test: 'pwa-old-new-live-exam-offline', status: 'PASS' });
     assert.deepEqual(errors, []);

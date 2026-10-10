@@ -144,7 +144,7 @@
   flex-shrink: 0;
   font-size: 0.85rem;
   cursor: pointer;
-  color: var(--gray-600);
+  color: var(--gray-700);
   margin-left: 6px;
   white-space: nowrap;
   display: inline-flex;
@@ -152,8 +152,10 @@
   justify-content: center;
 }
 .fontsize-btn:hover { background: var(--gray-100); }
-[data-theme="dark"] .fontsize-btn { border-color: var(--gray-600); color: var(--gray-400); }
-[data-theme="dark"] .fontsize-btn:hover { background: var(--gray-700); }
+[data-theme="dark"] .fontsize-btn { border-color: var(--gray-300); }
+[data-theme="dark"] .fontsize-btn:hover { background: var(--gray-200); }
+.site-header .fontsize-btn { color: #fff; border-color: rgba(255, 255, 255, .6); }
+.site-header .fontsize-btn:hover { background: rgba(255, 255, 255, .12); }
 
 html[data-fontsize="normal"] { font-size: 100%; }
 html[data-fontsize="large"] { font-size: 112.5%; }
