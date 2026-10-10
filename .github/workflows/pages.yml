@@ -33,8 +33,9 @@ jobs:
       - name: Validate frontend
         run: |
           for file in js/*.js sw.js; do node --check "$file"; done
-          node --test tests/load-reliability.test.js tests/practice-ux.test.js
+          node --test tests/load-reliability.test.js tests/practice-ux.test.js tests/snapshot-publication.test.mjs
       - name: Build validated public snapshot
+        id: build
         run: node tools/build_public_snapshot.mjs "$RUNNER_TEMP/site"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -53,14 +54,14 @@ jobs:
         if: ${{ success() }}
         run: node tools/verify_public_snapshot.mjs "$RUNNER_TEMP/site" --public
       - name: Rebuild after source change or transient publication failure
-        if: ${{ failure() && (steps.before.outcome == 'failure' || steps.after.outcome == 'failure') }}
+        if: ${{ failure() && (steps.build.outputs.rebuild_required == 'true' || steps.before.outputs.rebuild_required == 'true' || steps.after.outputs.rebuild_required == 'true') }}
         uses: actions/github-script@v7
         env:
           RETRY_DEPTH: ${{ inputs.retryDepth || '0' }}
         with:
           script: |
             const depth = Number(process.env.RETRY_DEPTH);
-            if (depth >= 2) throw new Error('Snapshot verification requires manual attention');
+            if (!Number.isInteger(depth) || depth < 0 || depth >= 2) throw new Error('Snapshot verification requires manual attention');
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner, repo: context.repo.repo,
               workflow_id: 'pages.yml', ref: 'main', inputs: { retryDepth: String(depth + 1) }
