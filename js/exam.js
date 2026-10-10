@@ -6,6 +6,7 @@ const EXAM_MODE = params.get("examMode") || CONFIG.DEFAULT_MODE; // "normal" | "
 
 let questions = [];
 let isFinishing = false; // 防止 finishExam 重複觸發
+let isLeaving = false;
 let catName = "";
 let current = 0;
 let answers = [];      // answers[i] = { chosen: number|array|null, hinted: bool }
@@ -50,6 +51,7 @@ async function init() {
 
         document.title = catName + ' — ' + t('exam.title');
         document.getElementById("exam-title").textContent = catName;
+        document.getElementById('exam-title').removeAttribute('data-i18n');
         document.getElementById("q-total").textContent = questions.length;
         var loadingEl = document.getElementById("loading");
         if (loadingEl) loadingEl.remove();
@@ -150,6 +152,7 @@ async function init() {
 
         document.title = catName + ' — ' + t('exam.title');
         document.getElementById("exam-title").textContent = catName;
+        document.getElementById('exam-title').removeAttribute('data-i18n');
 
         answers = questions.map(() => ({ chosen: null, hinted: false }));
 
@@ -233,7 +236,7 @@ function renderNav() {
         if (ans.chosen !== null) cls += " answered";
         if (ans.hinted) cls += " hinted";
         if (isBookmarked(CAT_ID, q.id)) cls += " bookmarked";
-        return `<button class="${cls}" onclick="goTo(${i})" title="第 ${i + 1} 題">${i + 1}</button>`;
+        return `<button class="${cls}" onclick="goTo(${i})" title="${t('exam.q.prefix')}${i + 1}${t('exam.q.unit')}">${i + 1}</button>`;
     }).join("");
 }
 
@@ -273,10 +276,10 @@ function renderQuestion() {
             ${bookmarked ? "★" : "☆"}
           </button>
         </div>
-        ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">📋 複選題</div>` : ''}
+        ${isMulti ? `<div class="multi-badge" style="display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:2px 10px;font-size:0.82rem;font-weight:600;margin-bottom:8px">${t('exam.multi')}</div>` : ''}
         <div class="q-text">${escapeHtml(q.q)}</div>
-        ${q.image ? `<div class="q-image"><img src="${q.image}" alt="題目圖片" loading="eager" onclick="openImageModal(this.src)"></div>` : ''}
-        <div class="options-list" id="options" role="radiogroup" aria-label="作答選項，可按鍵盤 1-4 快速選擇">
+        ${q.image ? `<div class="q-image"><img src="${q.image}" alt="${t('exam.image')}" loading="eager" onclick="openImageModal(this.src)"></div>` : ''}
+        <div class="options-list" id="options" role="group" aria-label="${t('exam.choices')}">
           ${q.options.map((opt, i) => {
         let cls = "";
         const isSelected = chosenArr.indexOf(i) >= 0;
@@ -288,10 +291,10 @@ function renderQuestion() {
         } else if (isSelected) cls = "selected";
         var btnDisabled = isMock ? false : isAnswered;
         return `
-              <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" ${btnDisabled ? "disabled" : ""}>
+              <button class="option-btn ${cls}${q.optionImages && q.optionImages[i] ? ' has-image' : ''}" onclick="selectOption(${i})" aria-pressed="${isSelected}" ${btnDisabled ? "disabled" : ""}>
                 <span class="option-label">${LABELS[i]}${isMulti ? (isSelected ? ' ✓' : '') : ''}</span>
                 ${q.optionImages && q.optionImages[i]
-                  ? `<img src="${q.optionImages[i]}" alt="選項${LABELS[i]}" class="option-image" loading="lazy">`
+                  ? `<img src="${q.optionImages[i]}" alt="${t('exam.option')} ${LABELS[i]}" class="option-image" loading="lazy">`
                   : `<span>${escapeHtml(opt)}</span>`}
               </button>`;
     }).join("")}
@@ -319,7 +322,7 @@ function renderQuestion() {
                ${current === questions.length - 1 ? t('exam.btn.finish') : t('exam.btn.next')}
              </button>`
             : (!isMock && isMulti && hasSelection)
-            ? `<button class="btn btn-primary" onclick="submitMulti()">送出答案</button>
+            ? `<button class="btn btn-primary" onclick="submitMulti()">${t('exam.submit.multi')}</button>
                <button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`
             : `<button class="btn btn-hint" onclick="showHint()">${t('exam.btn.hint')}</button>`}
         <button class="btn btn-feedback" onclick="openFeedback()">${t('exam.btn.feedback')}</button>
@@ -404,9 +407,11 @@ function handleKey(e) {
     if (e.isComposing || e.keyCode === 229) return;
     // 焦點在輸入欄位（反饋 textarea 等）時也不攔截
     var tag = (e.target && e.target.tagName) || '';
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) ||
+        (e.target && e.target.isContentEditable)) {
         if (e.key !== 'Escape') return;
     }
+    if (['BUTTON', 'A'].includes(tag) && (e.key === 'Enter' || e.key === ' ')) return;
 
     if (e.key === "Escape") {
         if (document.getElementById("feedback-modal")?.classList.contains("open")) { closeFeedback(); return; }
@@ -414,6 +419,7 @@ function handleKey(e) {
     }
     if (document.getElementById("feedback-modal")?.classList.contains("open")) return;
     if (document.getElementById("end-confirm-modal")?.classList.contains("open")) return;
+    if (document.getElementById('home-confirm-modal')?.classList.contains('open')) return;
     if (["1", "2", "3", "4"].includes(e.key)) selectOption(Number(e.key) - 1);
     if (e.key === "ArrowRight" || e.key === "Enter") {
         // 複選題：
@@ -454,19 +460,15 @@ function updateHeader() {
 }
 
 // ===== 中途存檔 =====
+function progressSnapshot() {
+    return { catId: CAT_ID, catName, examMode: EXAM_MODE, questions, answers,
+        current, timerSeconds, savedAt: new Date().toISOString() };
+}
+
 function autoSave() {
     if (MODE === "review") return; // 錯題複習不存檔
     try {
-        saveProgress({
-            catId: CAT_ID,
-            catName,
-            examMode: EXAM_MODE,
-            questions,
-            answers,
-            current,
-            timerSeconds,
-            savedAt: new Date().toISOString(),
-        });
+        saveProgress(progressSnapshot());
     } catch (e) {
         // 儲存空間不足 → 嘗試釋放歷史與離線反饋佇列後再試
         try { localStorage.removeItem("feedback_queue"); } catch (_) {}
@@ -477,11 +479,71 @@ function autoSave() {
             }
         } catch (_) {}
         try {
-            saveProgress({ catId: CAT_ID, catName, examMode: EXAM_MODE, questions, answers,
-                current, timerSeconds, savedAt: new Date().toISOString() });
+            saveProgress(progressSnapshot());
         } catch (_) { /* 仍然失敗就放棄存檔，不影響作答 */ }
     }
 }
+
+// 返回首頁不交卷；明確返回時不清掉反饋佇列，也不能在存檔失敗時靜默離開。
+function requestGoHome() {
+    if (isFinishing || isLeaving) return;
+    if (!questions.length) { location.href = 'index.html'; return; }
+    document.getElementById('home-confirm-body').textContent =
+        t(MODE === 'review' ? 'home.review.body' : 'home.body');
+    document.getElementById('home-confirm').textContent =
+        t(MODE === 'review' ? 'exam.home' : 'home.save');
+    document.getElementById('home-save-error').hidden = true;
+    document.getElementById('home-confirm-modal').classList.add('open');
+    document.getElementById('home-cancel').focus();
+}
+
+function closeHomeConfirm() {
+    document.getElementById('home-confirm-modal').classList.remove('open');
+    document.getElementById('btn-home').focus();
+}
+
+function confirmGoHome() {
+    if (isFinishing || isLeaving || !questions.length) return;
+    if (MODE !== 'review') {
+        try {
+            var snapshot = progressSnapshot();
+            saveProgress(snapshot);
+            if (JSON.stringify(loadProgress()) !== JSON.stringify(snapshot)) throw new Error('Save failed');
+        } catch (_) {
+            var error = document.getElementById('home-save-error');
+            error.textContent = t('home.save.error');
+            error.hidden = false;
+            return;
+        }
+    }
+    isLeaving = true;
+    if (timerInterval) clearInterval(timerInterval);
+    location.href = 'index.html';
+}
+
+function handleHomeDialogKey(e) {
+    var modal = document.getElementById('home-confirm-modal');
+    if (!modal.classList.contains('open')) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        closeHomeConfirm();
+    } else if (e.key === 'Tab') {
+        var first = document.getElementById('home-cancel');
+        var last = document.getElementById('home-confirm');
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+}
+document.addEventListener('keydown', handleHomeDialogKey);
+window.addEventListener('pageshow', function(e) {
+    // 瀏覽器上一頁若恢復了已離開的頁面，重新由存檔啟動，避免沿用已停止的計時器。
+    if (e.persisted && isLeaving) location.reload();
+});
 
 // ===== 提前結束 =====
 function endEarly() {
@@ -497,7 +559,7 @@ function confirmEnd() {
 }
 
 function finishExam() {
-    if (isFinishing) return;
+    if (isFinishing || isLeaving) return;
     isFinishing = true;
     if (timerInterval) clearInterval(timerInterval);
     const totalTime = modeConfig.time * 60;

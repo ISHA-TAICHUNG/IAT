@@ -265,12 +265,14 @@ function formatChoices(q, indices) {
 const THEME_KEY = "theme_pref";
 
 function getThemePref() {
-    return localStorage.getItem(THEME_KEY) || "light";
+    try {
+        return localStorage.getItem(THEME_KEY) || 'light';
+    } catch (_) { return 'light'; }
 }
 
 function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(THEME_KEY, theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
     // 更新所有 toggle 按鈕
     document.querySelectorAll(".theme-toggle").forEach(btn => {
         btn.textContent = theme === "dark" ? "☀️" : "🌙";
@@ -285,18 +287,34 @@ function toggleTheme() {
 // ===== 字體大小 =====
 const FONTSIZE_KEY = "fontsize_pref";
 const FONTSIZES = ["normal", "large", "xlarge"];
-const FONTSIZE_LABELS = { normal: "字小", large: "字中", xlarge: "字大" };
+const FONTSIZE_LABELS = { normal: 'A', large: 'A+', xlarge: 'A++' };
+let sessionFontSize = 'normal';
 
 function getFontSizePref() {
-    return localStorage.getItem(FONTSIZE_KEY) || "normal";
+    try {
+        var size = localStorage.getItem(FONTSIZE_KEY);
+        return FONTSIZES.includes(size) ? size : sessionFontSize;
+    } catch (_) { return sessionFontSize; }
+}
+
+function updateFontSizeButtons() {
+    var size = sessionFontSize;
+    var next = FONTSIZES[(FONTSIZES.indexOf(size) + 1) % FONTSIZES.length];
+    var label = typeof t === 'function'
+        ? t('font.size') + ': ' + t('font.' + size) + '; ' + t('font.next') + ' ' + t('font.' + next)
+        : 'Text size: ' + size + '; next: ' + next;
+    document.querySelectorAll('.fontsize-btn').forEach(function(btn) {
+        btn.textContent = FONTSIZE_LABELS[size];
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+    });
 }
 
 function applyFontSize(size) {
-    document.documentElement.setAttribute("data-fontsize", size);
-    localStorage.setItem(FONTSIZE_KEY, size);
-    document.querySelectorAll(".fontsize-btn").forEach(function(btn) {
-        btn.textContent = FONTSIZE_LABELS[size] || "A";
-    });
+    sessionFontSize = FONTSIZES.includes(size) ? size : 'normal';
+    document.documentElement.setAttribute('data-fontsize', sessionFontSize);
+    try { localStorage.setItem(FONTSIZE_KEY, sessionFontSize); } catch (_) {}
+    updateFontSizeButtons();
 }
 
 function cycleFontSize() {
@@ -312,6 +330,70 @@ function cycleFontSize() {
     applyFontSize(getFontSizePref());
 })();
 
+window.addEventListener('langchange', updateFontSizeButtons);
+
+// 放大文字或換語言後，黏住的導覽列仍須依實際高度排列。
+function updateStickyOffsets() {
+    [['.lang-bar', '--lang-bar-height'], ['.site-header', '--site-header-height'],
+        ['.exam-header', '--exam-header-height']].forEach(function(entry) {
+        var el = document.querySelector(entry[0]);
+        document.documentElement.style.setProperty(entry[1],
+            (el ? el.getBoundingClientRect().height : 0) + 'px');
+    });
+}
+updateStickyOffsets();
+if (typeof ResizeObserver === 'function') {
+    var headerObserver = new ResizeObserver(updateStickyOffsets);
+    document.querySelectorAll('.lang-bar, .site-header, .exam-header').forEach(function(el) {
+        headerObserver.observe(el);
+    });
+} else {
+    window.addEventListener('resize', updateStickyOffsets);
+}
+
+// PWA 可在每個入口檢查新版，但不強制重整正在作答的頁面。
+function showSiteUpdateNotice() {
+    if (document.getElementById('site-update-notice')) return;
+    var notice = document.createElement('aside');
+    notice.id = 'site-update-notice';
+    notice.className = 'site-update-notice';
+    notice.setAttribute('aria-live', 'polite');
+    var isExamPage = /\/exam\.html$/.test(location.pathname);
+    var message = document.createElement('p');
+    message.setAttribute('data-i18n', isExamPage ? 'update.exam' : 'update.ready');
+    message.textContent = t(isExamPage ? 'update.exam' : 'update.ready');
+    notice.appendChild(message);
+    if (!isExamPage) {
+        var button = document.createElement('button');
+        button.className = 'btn btn-outline btn-sm';
+        button.setAttribute('data-i18n', 'update.reload');
+        button.textContent = t('update.reload');
+        button.onclick = function() { location.reload(); };
+        notice.appendChild(button);
+    }
+    var header = document.querySelector('.site-header');
+    if (header) header.after(notice);
+    else document.body.appendChild(notice);
+}
+
+function registerSiteWorker() {
+    if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+    var hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (hadController) showSiteUpdateNotice();
+        hadController = true;
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(registration) {
+        var lastCheck = Date.now();
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden || Date.now() - lastCheck < 60000) return;
+            lastCheck = Date.now();
+            registration.update().catch(function() {});
+        });
+    }).catch(function() {});
+}
+registerSiteWorker();
+
 // ===== 中途存檔 =====
 const SAVE_KEY = "exam_save";
 
@@ -321,7 +403,19 @@ function saveProgress(data) {
 
 function loadProgress() {
     try {
-        return JSON.parse(localStorage.getItem(SAVE_KEY));
+        var saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (!saved || typeof saved.catId !== 'string' || !saved.catId ||
+            typeof saved.catName !== 'string' || !['normal', 'speed', 'mock'].includes(saved.examMode) ||
+            !Array.isArray(saved.questions) || !saved.questions.length ||
+            !Array.isArray(saved.answers) || saved.answers.length !== saved.questions.length ||
+            !Number.isInteger(saved.current) || saved.current < 0 || saved.current >= saved.questions.length ||
+            !Number.isFinite(saved.timerSeconds) || saved.timerSeconds < 0 ||
+            !saved.answers.every(function(answer) {
+                return answer && (answer.chosen === null || Number.isInteger(answer.chosen) ||
+                    Array.isArray(answer.chosen));
+            })) return null;
+        if (typeof validQuestions === 'function' && !validQuestions(saved.questions)) return null;
+        return saved;
     } catch { return null; }
 }
 

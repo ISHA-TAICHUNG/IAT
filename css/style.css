@@ -140,6 +140,8 @@
   border-radius: 8px;
   padding: 8px 12px;
   min-height: 44px;
+  width: 56px;
+  flex-shrink: 0;
   font-size: 0.85rem;
   cursor: pointer;
   color: var(--gray-600);
@@ -147,18 +149,15 @@
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 .fontsize-btn:hover { background: var(--gray-100); }
 [data-theme="dark"] .fontsize-btn { border-color: var(--gray-600); color: var(--gray-400); }
 [data-theme="dark"] .fontsize-btn:hover { background: var(--gray-700); }
 
-[data-fontsize="large"] .q-text { font-size: 1.15rem !important; }
-[data-fontsize="large"] .option-btn { font-size: 1.05rem !important; }
-[data-fontsize="large"] .option-label { min-width: 30px; width: 30px; height: 30px; }
-
-[data-fontsize="xlarge"] .q-text { font-size: 1.3rem !important; }
-[data-fontsize="xlarge"] .option-btn { font-size: 1.18rem !important; }
-[data-fontsize="xlarge"] .option-label { min-width: 34px; width: 34px; height: 34px; font-size: 0.9rem; }
+html[data-fontsize="normal"] { font-size: 100%; }
+html[data-fontsize="large"] { font-size: 112.5%; }
+html[data-fontsize="xlarge"] { font-size: 125%; }
 
 /* ===== 模擬考模式 ===== */
 .option-btn.mock-selected {
@@ -275,7 +274,7 @@ a {
   padding: 0 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, .2);
   position: sticky;
-  top: 0;
+  top: var(--lang-bar-height, 0px);
   z-index: 100;
 }
 
@@ -285,7 +284,15 @@ a {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 64px;
+  min-height: 64px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.site-header .inner > div:not(.header-logo-wrap) {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .header-logo-wrap {
@@ -314,7 +321,7 @@ a {
 .site-header h1 {
   font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: .02em;
+  letter-spacing: 0;
 }
 
 .header-sub {
@@ -787,6 +794,8 @@ a {
   padding: 32px 28px;
   width: 100%;
   max-width: 480px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   animation: modal-in .22s ease;
 }
 
@@ -903,7 +912,35 @@ a {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
+
+.home-dialog h2 { font-size: 1.1rem; margin-bottom: 12px; }
+.notice-heading { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; }
+.notice-heading h2 { margin-bottom: 0; }
+.home-dialog p { margin-bottom: 20px; color: var(--gray-700); }
+.home-save-error { color: var(--danger) !important; font-size: .9rem; }
+
+/* 公告不讀取反饋或管理端資料；沒有重大更新時不佔版面。 */
+.major-updates { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--gray-300); }
+.major-updates[hidden] { display: none; }
+.major-updates h2 { font-size: 1rem; margin-bottom: 12px; }
+.major-update { padding: 12px 0; }
+.major-update + .major-update { border-top: 1px solid var(--gray-200); }
+.major-update time { font-size: .8rem; color: var(--gray-500); }
+.major-update h3 { font-size: .95rem; margin: 4px 0; }
+.major-update p { font-size: .88rem; color: var(--gray-700); overflow-wrap: anywhere; }
+.site-update-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--accent-light);
+  color: var(--gray-900);
+  font-size: .88rem;
+}
+.site-update-notice p { flex: 1; min-width: 200px; }
 
 /* ===== Exam header ===== */
 .exam-header {
@@ -911,7 +948,7 @@ a {
   border-bottom: 1px solid var(--gray-200);
   padding: 10px 16px;
   position: sticky;
-  top: 64px;
+  top: calc(var(--lang-bar-height, 0px) + var(--site-header-height, 64px));
   z-index: 90;
   box-shadow: var(--shadow);
 }
@@ -972,12 +1009,29 @@ a {
   color: #fff;
 }
 
+.btn-home {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  color: var(--gray-700);
+  padding: 5px 12px;
+  min-height: 44px;
+  font: inherit;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.btn-home:hover { background: var(--gray-100); }
+.btn-home:focus-visible, .fontsize-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* ===== 題目導覽列 ===== */
 .q-nav-wrap {
   background: var(--card-bg);
   border-bottom: 1px solid var(--gray-200);
   position: sticky;
-  top: 108px;
+  top: calc(var(--lang-bar-height, 0px) + var(--site-header-height, 64px) + var(--exam-header-height, 44px));
   z-index: 85;
 }
 
@@ -1213,8 +1267,9 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 2.1em;
+  height: 2.1em;
+  white-space: nowrap;
   background: var(--gray-200);
   border-radius: 50%;
   font-size: .8rem;
@@ -1644,6 +1699,10 @@ a {
 
 /* ===== RWD ===== */
 @media (max-width: 600px) {
+  .site-header { padding: 0 12px; }
+  .site-header .inner { gap: 8px; }
+  .nav-tabs { flex-wrap: wrap; padding: 0 8px; }
+  .nav-tab { overflow-wrap: anywhere; }
   .selector-card {
     padding: 24px 18px;
   }
@@ -1671,9 +1730,9 @@ a {
     gap: 8px;
   }
   .option-label {
-    min-width: 26px;
-    width: 26px;
-    height: 26px;
+    min-width: 2.1em;
+    width: 2.1em;
+    height: 2.1em;
     font-size: 0.78rem;
     flex-shrink: 0;
   }
@@ -1742,10 +1801,6 @@ a {
 
   .mode-options {
     flex-direction: column;
-  }
-
-  .q-nav-wrap {
-    top: 100px;
   }
 
   .q-nav {

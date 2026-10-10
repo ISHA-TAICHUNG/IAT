@@ -273,7 +273,13 @@ function renderResumeBanner() {
   }
 
   var modeInfo = CONFIG.MODES[saved.examMode] || CONFIG.MODES.normal;
-  var answered = saved.answers.filter(function(a) { return a.chosen !== null || a.hinted; }).length;
+  var answered = saved.answers.filter(function(answer, index) {
+    if (answer.hinted) return true;
+    if (isMultiQ(saved.questions[index])) {
+      return saved.examMode === 'mock' ? ansArrayOf(answer.chosen).length > 0 : answer.submitted === true;
+    }
+    return answer.chosen !== null && answer.chosen !== undefined;
+  }).length;
   var timeAgo = new Date(saved.savedAt).toLocaleString(getLang() === 'zh-TW' ? 'zh-TW' : undefined);
 
   var el = banner || document.createElement("div");
@@ -325,6 +331,50 @@ function discardSave() {
 }
 
 // ===== 首頁歷史成績 =====
+// 只填已完成上傳及公開回讀驗證的重大更新；不放原始反饋、個資或內部連結。
+// 每筆使用 { publishedOn: 'YYYY-MM-DD', major: true, verified: true,
+//   title: { 語言代碼: 標題 }, summary: { 語言代碼: 摘要 } }，六種語言須完整。
+const MAJOR_UPDATES = [];
+
+function renderMajorUpdates() {
+  var section = document.getElementById('major-updates');
+  var list = document.getElementById('major-updates-list');
+  if (!section || !list) return;
+  var lang = getLang();
+  var parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Taipei',
+    year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  var dateParts = {};
+  parts.forEach(function(part) { dateParts[part.type] = part.value; });
+  var today = dateParts.year + '-' + dateParts.month + '-' + dateParts.day;
+  var updates = MAJOR_UPDATES.filter(function(item) {
+    if (!item || item.major !== true || item.verified !== true ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(item.publishedOn) || item.publishedOn > today) return false;
+    var date = new Date(item.publishedOn + 'T00:00:00Z');
+    if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== item.publishedOn) return false;
+    return Object.keys(LANGS).every(function(code) {
+      return item.title && typeof item.title[code] === 'string' && item.title[code].trim() &&
+        item.summary && typeof item.summary[code] === 'string' && item.summary[code].trim();
+    });
+  }).sort(function(a, b) { return b.publishedOn.localeCompare(a.publishedOn); }).slice(0, 3);
+  list.textContent = '';
+  section.hidden = updates.length === 0;
+  updates.forEach(function(item) {
+    var article = document.createElement('article');
+    article.className = 'major-update';
+    var date = document.createElement('time');
+    date.dateTime = item.publishedOn;
+    date.textContent = item.publishedOn;
+    var heading = document.createElement('h3');
+    heading.textContent = item.title[lang];
+    var summary = document.createElement('p');
+    summary.textContent = item.summary[lang];
+    article.appendChild(date);
+    article.appendChild(heading);
+    article.appendChild(summary);
+    list.appendChild(article);
+  });
+}
+
 function renderHomeHistory() {
   var section = document.getElementById("history-section");
   if (!section) return;
@@ -410,6 +460,7 @@ if (sessionStorage.getItem("notice_seen")) {
 // ===== 語言切換事件 =====
 window.addEventListener('langchange', function() {
   // 語言切換時重新渲染
+  renderMajorUpdates();
   if (!_allCategories.length) return;
   var filtered = filterCategoriesByLang(_allCategories);
   renderDropdown(filtered);
@@ -417,6 +468,8 @@ window.addEventListener('langchange', function() {
 });
 
 // ===== 初始化 =====
+renderMajorUpdates();
+renderResumeBanner();
 if (typeof flushFeedbackQueue === 'function') flushFeedbackQueue();
 function initializeCategories(force) {
   var wrap = document.getElementById('select-wrap');

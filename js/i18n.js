@@ -194,24 +194,135 @@ const I18N = {
   'group.職護': { 'zh-TW': '職護', vi: 'Y tá', id: 'Perawat K3', th: 'พยาบาล', en: 'Nurse' },
   'group.全國技術士': { 'zh-TW': '全國技術士', vi: 'Kỹ thuật viên quốc gia', id: 'Teknisi Nasional', th: 'ช่างเทคนิคแห่งชาติ', en: 'National Technician' },
   'group.即測即評': { 'zh-TW': '即測即評', vi: 'Đánh giá tức thì', id: 'Penilaian Langsung', th: 'ประเมินทันที', en: 'Instant Assessment' },
+  'font.size': {
+    'zh-TW': '字體大小', vi: 'Cỡ chữ', id: 'Ukuran teks', th: 'ขนาดตัวอักษร',
+    en: 'Text size', fil: 'Laki ng teksto',
+  },
+  'font.normal': {
+    'zh-TW': '標準', vi: 'Bình thường', id: 'Normal', th: 'ปกติ',
+    en: 'Normal', fil: 'Karaniwan',
+  },
+  'font.large': {
+    'zh-TW': '大', vi: 'Lớn', id: 'Besar', th: 'ใหญ่', en: 'Large', fil: 'Malaki',
+  },
+  'font.xlarge': {
+    'zh-TW': '特大', vi: 'Rất lớn', id: 'Sangat besar', th: 'ใหญ่มาก',
+    en: 'Extra large', fil: 'Napakalaki',
+  },
+  'font.next': {
+    'zh-TW': '切換至', vi: 'Đổi sang', id: 'Ubah ke', th: 'เปลี่ยนเป็น',
+    en: 'Switch to', fil: 'Palitan sa',
+  },
+  'updates.title': {
+    'zh-TW': '題庫重大更新', vi: 'Cập nhật quan trọng', id: 'Pembaruan penting',
+    th: 'การอัปเดตสำคัญ', en: 'Important question bank updates', fil: 'Mahahalagang update sa mga tanong',
+  },
+  'exam.home': {
+    'zh-TW': '返回首頁', vi: 'Về trang chủ', id: 'Ke beranda', th: 'กลับหน้าแรก',
+    en: 'Home', fil: 'Pangunahing pahina',
+  },
+  'exam.multi': {
+    'zh-TW': '複選題', vi: 'Chọn nhiều đáp án', id: 'Pilihan ganda lebih dari satu',
+    th: 'เลือกได้หลายคำตอบ', en: 'Multiple answers', fil: 'Maraming sagot',
+  },
+  'exam.submit.multi': {
+    'zh-TW': '送出答案', vi: 'Gửi đáp án', id: 'Kirim jawaban', th: 'ส่งคำตอบ',
+    en: 'Submit answer', fil: 'Isumite ang sagot',
+  },
+  'exam.choices': {
+    'zh-TW': '作答選項', vi: 'Các lựa chọn', id: 'Pilihan jawaban', th: 'ตัวเลือกคำตอบ',
+    en: 'Answer choices', fil: 'Mga pagpipiliang sagot',
+  },
+  'exam.image': {
+    'zh-TW': '題目圖片', vi: 'Hình câu hỏi', id: 'Gambar soal', th: 'ภาพคำถาม',
+    en: 'Question image', fil: 'Larawan ng tanong',
+  },
+  'exam.option': {
+    'zh-TW': '選項', vi: 'Lựa chọn', id: 'Pilihan', th: 'ตัวเลือก',
+    en: 'Option', fil: 'Pagpipilian',
+  },
+  'home.title': {
+    'zh-TW': '返回首頁？', vi: 'Về trang chủ?', id: 'Kembali ke beranda?', th: 'กลับหน้าแรกหรือไม่?',
+    en: 'Return to home?', fil: 'Bumalik sa pangunahing pahina?',
+  },
+  'home.body': {
+    'zh-TW': '保留目前題目、答案與剩餘時間，暫停測驗並返回首頁。之後可按「繼續作答」恢復，不會交卷或產生成績。',
+    vi: 'Lưu câu hỏi, câu trả lời và thời gian còn lại, rồi tạm dừng và về trang chủ. Chọn tiếp tục để làm lại từ đây. Bài chưa được nộp hay chấm điểm.',
+    id: 'Simpan soal, jawaban, dan sisa waktu, lalu jeda dan kembali ke beranda. Pilih lanjutkan untuk meneruskan. Ujian tidak dikumpulkan atau dinilai.',
+    th: 'บันทึกคำถาม คำตอบ และเวลาที่เหลือ แล้วพักการสอบและกลับหน้าแรก เลือกทำต่อเพื่อกลับมาสอบ โดยยังไม่ส่งข้อสอบหรือให้คะแนน',
+    en: 'Save the questions, answers, and remaining time, then pause and return home. Choose Continue to resume. This will not submit or grade the exam.',
+    fil: 'I-save ang mga tanong, sagot, at natitirang oras, pagkatapos ay ihinto muna at bumalik sa pangunahing pahina. Piliin ang Magpatuloy upang ituloy. Hindi pa ito isusumite o mamarkahan.',
+  },
+  'home.review.body': {
+    'zh-TW': '返回首頁不會交卷或產生成績。錯題複習的目前進度不會存檔，可從原成績頁重新開始複習。',
+    vi: 'Về trang chủ mà không nộp hay chấm điểm. Tiến độ ôn tập này không được lưu; có thể bắt đầu lại từ trang kết quả.',
+    id: 'Kembali tanpa mengumpulkan atau menilai. Progres ulasan ini tidak disimpan; mulai lagi dari halaman hasil.',
+    th: 'กลับหน้าแรกโดยไม่ส่งข้อสอบหรือให้คะแนน ความคืบหน้าการทบทวนนี้จะไม่ถูกบันทึก เริ่มทบทวนใหม่ได้จากหน้าผลสอบ',
+    en: 'Return without submitting or grading. This review progress will not be saved; restart the review from the results page.',
+    fil: 'Bumalik nang hindi isinusumite o minamarkahan. Hindi mase-save ang progreso ng pagrepaso; maaari itong simulan muli mula sa pahina ng resulta.',
+  },
+  'home.cancel': {
+    'zh-TW': '繼續作答', vi: 'Tiếp tục làm bài', id: 'Lanjutkan ujian', th: 'ทำข้อสอบต่อ',
+    en: 'Keep answering', fil: 'Magpatuloy sa pagsagot',
+  },
+  'home.save': {
+    'zh-TW': '保留進度並返回', vi: 'Lưu và về trang chủ', id: 'Simpan dan kembali', th: 'บันทึกและกลับ',
+    en: 'Save and return', fil: 'I-save at bumalik',
+  },
+  'home.save.error': {
+    'zh-TW': '無法儲存進度，尚未離開測驗。請允許瀏覽器儲存資料，或繼續作答後交卷。',
+    vi: 'Không thể lưu tiến độ. Bạn vẫn ở trong bài kiểm tra. Cho phép trình duyệt lưu dữ liệu hoặc tiếp tục và nộp bài.',
+    id: 'Progres tidak dapat disimpan. Anda masih di ujian. Izinkan penyimpanan browser atau lanjutkan dan kumpulkan.',
+    th: 'บันทึกความคืบหน้าไม่ได้ คุณยังอยู่ในการสอบ โปรดอนุญาตให้เบราว์เซอร์บันทึกข้อมูล หรือทำต่อและส่งข้อสอบ',
+    en: 'Progress could not be saved. You have not left the exam. Allow browser storage, or keep answering and submit.',
+    fil: 'Hindi ma-save ang progreso. Nasa pagsusulit ka pa rin. Payagan ang browser na mag-save ng data, o magpatuloy at isumite.',
+  },
+  'update.ready': {
+    'zh-TW': '網站新版已準備完成，可以重新載入更新。',
+    vi: 'Phiên bản mới đã sẵn sàng. Tải lại để cập nhật.',
+    id: 'Versi baru siap. Muat ulang untuk memperbarui.',
+    th: 'เว็บไซต์เวอร์ชันใหม่พร้อมแล้ว โหลดใหม่เพื่ออัปเดต',
+    en: 'A new version is ready. Reload to update.',
+    fil: 'Handa na ang bagong bersyon. I-reload upang mag-update.',
+  },
+  'update.exam': {
+    'zh-TW': '網站新版已準備完成。本次作答不會中斷；保留進度返回首頁或交卷後即可使用新版。',
+    vi: 'Phiên bản mới đã sẵn sàng. Bài thi không bị gián đoạn; lưu và về trang chủ hoặc nộp bài để dùng phiên bản mới.',
+    id: 'Versi baru siap. Ujian tidak terganggu; simpan dan kembali atau kumpulkan untuk menggunakan versi baru.',
+    th: 'เวอร์ชันใหม่พร้อมแล้ว การสอบจะไม่ถูกขัดจังหวะ บันทึกและกลับหน้าแรก หรือส่งข้อสอบเพื่อใช้เวอร์ชันใหม่',
+    en: 'A new version is ready. Your exam will not be interrupted; save and return home, or submit, to use the new version.',
+    fil: 'Handa na ang bagong bersyon. Hindi maaantala ang pagsusulit; i-save at bumalik o isumite upang gamitin ito.',
+  },
+  'update.reload': {
+    'zh-TW': '重新載入更新', vi: 'Tải lại', id: 'Muat ulang', th: 'โหลดใหม่',
+    en: 'Reload to update', fil: 'I-reload para mag-update',
+  },
 };
 
 // ===== 核心函式 =====
+var sessionLang = 'zh-TW';
 function getLang() {
-  var lang = localStorage.getItem('lang') || 'zh-TW';
+  var lang = sessionLang;
+  try { lang = localStorage.getItem('lang') || sessionLang; } catch (_) {}
   // v1 的 en 實際指向菲律賓題庫；保留既有使用者的選擇，避免升版後被改成英文。
-  if (lang === 'en' && localStorage.getItem('lang_schema') !== '2') {
-    lang = 'fil';
-    localStorage.setItem('lang', lang);
-    localStorage.setItem('lang_schema', '2');
-  }
-  return LANGS[lang] ? lang : 'zh-TW';
+  try {
+    if (lang === 'en' && localStorage.getItem('lang_schema') !== '2') {
+      lang = 'fil';
+      localStorage.setItem('lang', lang);
+      localStorage.setItem('lang_schema', '2');
+    }
+  } catch (_) {}
+  sessionLang = LANGS[lang] ? lang : 'zh-TW';
+  return sessionLang;
 }
 
 function setLang(lang) {
   if (!LANGS[lang]) return;
-  localStorage.setItem('lang', lang);
-  localStorage.setItem('lang_schema', '2');
+  sessionLang = lang;
+  try {
+    localStorage.setItem('lang', lang);
+    localStorage.setItem('lang_schema', '2');
+  } catch (_) {}
   applyI18n();
   window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
 }
@@ -220,7 +331,9 @@ function t(key, fallback) {
   var lang = getLang();
   var entry = I18N[key];
   if (!entry) return fallback || key;
-  return entry[lang] || (lang === 'fil' && entry.en) || entry['zh-TW'] || fallback || key;
+  if (typeof entry[lang] === 'string') return entry[lang];
+  if (lang === 'fil' && typeof entry.en === 'string') return entry.en;
+  return typeof entry['zh-TW'] === 'string' ? entry['zh-TW'] : fallback || key;
 }
 
 function applyI18n() {

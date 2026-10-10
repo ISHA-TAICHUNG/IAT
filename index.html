@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260930a" />
+  <link rel="stylesheet" href="css/style.css?v=20261010a" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1e293b" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -60,7 +60,10 @@
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <h2 id="notice-title" data-i18n="notice.title">使用前須知</h2>
+      <div class="notice-heading">
+        <h2 id="notice-title" data-i18n="notice.title">使用前須知</h2>
+        <button class="fontsize-btn" onclick="cycleFontSize()" title="字體大小">A</button>
+      </div>
       <div class="notice-body">
         <p data-i18n="notice.p1">本網站題目僅供參考使用，內容可能因法規更新尚未修正，或題目本身仍有疏漏，請以最新法規為準。</p>
       </div>
@@ -157,6 +160,11 @@
 
     <!-- 歷史成績 -->
     <div id="history-section"></div>
+
+    <section class="major-updates" id="major-updates" aria-labelledby="major-updates-title" hidden>
+      <h2 id="major-updates-title" data-i18n="updates.title">題庫重大更新</h2>
+      <div id="major-updates-list"></div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -167,15 +175,12 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/config.js?v=20260930a"></script>
-  <script src="js/i18n.js?v=20260930a"></script>
-  <script src="js/utils.js?v=20260930a"></script>
-  <script src="js/data-loader.js?v=20260930a"></script>
-  <script src="js/app.js?v=20260930a"></script>
+  <script src="js/config.js?v=20261010a"></script>
+  <script src="js/i18n.js?v=20261010a"></script>
+  <script src="js/utils.js?v=20261010a"></script>
+  <script src="js/data-loader.js?v=20261010a"></script>
+  <script src="js/app.js?v=20261010a"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(function() {});
-    }
     // PWA 提示：已安裝或已關閉就隱藏
     function closePwaGuide() {
       document.getElementById('pwa-guide').classList.add('hidden');

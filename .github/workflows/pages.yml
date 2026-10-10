@@ -33,7 +33,7 @@ jobs:
       - name: Validate frontend
         run: |
           for file in js/*.js sw.js; do node --check "$file"; done
-          node --test tests/load-reliability.test.js
+          node --test tests/load-reliability.test.js tests/practice-ux.test.js
       - name: Build validated public snapshot
         run: node tools/build_public_snapshot.mjs "$RUNNER_TEMP/site"
       - uses: actions/configure-pages@v5
