@@ -1,30 +1,32 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20261010b";
+const CACHE_NAME = "exam-v20261010c";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
     "./exam.html",
     "./result.html",
     "./manifest.json",
-    "./css/style.css?v=20261010b",
-    "./js/config.js?v=20261010b",
-    "./js/i18n.js?v=20261010b",
-    "./js/utils.js?v=20261010b",
-    "./js/data-loader.js?v=20261010b",
-    "./js/app.js?v=20261010b",
-    "./js/exam.js?v=20261010b",
-    "./js/result.js?v=20261010b",
+    "./css/style.css?v=20261010c",
+    "./js/config.js?v=20261010c",
+    "./js/i18n.js?v=20261010c",
+    "./js/utils.js?v=20261010c",
+    "./js/data-loader.js?v=20261010c",
+    "./js/app.js?v=20261010c",
+    "./js/exam.js?v=20261010c",
+    "./js/result.js?v=20261010c",
     "./query.html",
-    "./css/query.css?v=20261010b",
-    "./js/query.js?v=20261010b",
+    "./css/query.css?v=20261010c",
+    "./js/query.js?v=20261010c",
     "./exam-query.html",
-    "./js/exam-query.js?v=20261010b",
+    "./js/exam-query.js?v=20261010c",
 ];
 
-// 安裝：預快取靜態資源
+// 安裝時避開 HTTP 舊快取，避免新 cache 收到引用舊版 CSS/JS 的 HTML。
 self.addEventListener("install", (e) => {
     e.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+        caches.open(CACHE_NAME).then((cache) =>
+            cache.addAll(STATIC_ASSETS.map((asset) => new Request(asset, { cache: 'reload' })))
+        )
     );
     self.skipWaiting();
 });

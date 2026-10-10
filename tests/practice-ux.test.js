@@ -11,6 +11,26 @@ const sampleQuestions = [
   { id: 2, q: '測試複選', options: ['甲', '乙', '丙'], answer: [0, 2] },
 ];
 
+test('新版 PWA 預快取必須重新取檔，不能將 HTTP 舊 HTML 裝入新 cache', async () => {
+  const handlers = new Map();
+  let captured = [];
+  const context = {
+    self: { addEventListener: (name, handler) => handlers.set(name, handler),
+      skipWaiting() {}, clients: { claim() {} } },
+    Request: class {
+      constructor(url, options) { this.url = url; this.cache = options.cache; }
+    },
+    caches: { open: async () => ({ addAll: async requests => { captured = requests; } }) },
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'sw.js'), 'utf8'), context);
+  let completion;
+  handlers.get('install')({ waitUntil: promise => { completion = promise; } });
+  await completion;
+  assert.ok(captured.some(request => request.url === './index.html'));
+  assert.ok(captured.some(request => request.url === './exam.html'));
+  assert.ok(captured.every(request => request.cache === 'reload'));
+});
+
 function browser(page = 'exam', mode = 'normal', review = false) {
   const nodes = new Map();
   const values = new Map();

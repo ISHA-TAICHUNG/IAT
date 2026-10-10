@@ -61,6 +61,8 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   const file = decodeURIComponent(url.pathname).replace(/^\//, '') || 'index.html';
+  // 比照 Pages 的 HTTP 快取；不能用 no-store 掩蓋新版預快取混入舊 HTML。
+  if (file !== 'sw.js') response.setHeader('Cache-Control', 'public, max-age=600');
   if (!/^(?:index|exam|result|query|exam-query)\.html$|^sw\.js$|^manifest\.json$|^(?:js|css|images|icons)\/[\w.-]+$/.test(file)) {
     response.writeHead(404).end();
     return;
@@ -235,7 +237,7 @@ async function main() {
     // 真正安裝舊 Service Worker，再更新其快取版本；不是只模擬 controllerchange。
     stage = 'old';
     const pwa = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'allow' });
-    await pwa.route('https://**/*', route => route.abort());
+    // Playwright routing 會停用 HTTP 快取；此情境只改寫本機 CONFIG，不攔截請求。
     const app = await pwa.newPage();
     app.on('pageerror', error => errors.push(error.message));
     await app.goto(base);
