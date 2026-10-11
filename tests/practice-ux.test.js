@@ -11,6 +11,44 @@ const sampleQuestions = [
   { id: 2, q: '測試複選', options: ['甲', '乙', '丙'], answer: [0, 2] },
 ];
 
+test('僅測驗三頁禁止瀏覽器翻譯，保留原題與選項標籤', () => {
+  for (const page of ['index', 'exam', 'result']) {
+    const html = fs.readFileSync(path.join(root, page + '.html'), 'utf8');
+    assert.ok(/<html\b[^>]*\btranslate="no"/.test(html), page + ': 缺少翻譯防護屬性');
+    assert.ok(/<meta name="google" content="notranslate"\s*\/>/.test(html),
+      page + ': 缺少 Chrome 翻譯防護標記');
+    assert.doesNotMatch(html, /\btranslate="yes"/);
+  }
+  for (const page of ['query', 'exam-query']) {
+    const html = fs.readFileSync(path.join(root, page + '.html'), 'utf8');
+    assert.doesNotMatch(html, /\btranslate="no"|content="notranslate"/);
+  }
+});
+
+test('防自動翻譯標記不影響網站六語切換與語言屬性', () => {
+  const { context, nodes } = browser();
+  context.document.documentElement.setAttribute('translate', 'no');
+  for (const lang of languages) {
+    context.setLang(lang);
+    assert.equal(context.getLang(), lang);
+    assert.equal(context.document.documentElement.lang, lang === 'zh-TW' ? 'zh-Hant' : lang);
+    assert.equal(context.document.documentElement.getAttribute('translate'), 'no');
+    assert.ok(nodes.get('font').attributes['aria-label'].startsWith(context.t('font.size')));
+  }
+});
+
+test('五頁資源版號與 PWA 快取同步，更新時包含測驗三頁', () => {
+  const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+  const version = sw.match(/CACHE_NAME = ["']exam-v(\d{8}[a-z])["']/)?.[1];
+  assert.ok(version, 'PWA 快取版號格式錯誤');
+  for (const file of ['index.html', 'exam.html', 'result.html', 'query.html', 'exam-query.html', 'sw.js']) {
+    const source = fs.readFileSync(path.join(root, file), 'utf8');
+    const versions = Array.from(source.matchAll(/\?v=(\d{8}[a-z])/g), match => match[1]);
+    assert.ok(versions.length > 0 && versions.every(value => value === version), file);
+  }
+  for (const page of ['index', 'exam', 'result']) assert.ok(sw.includes('./' + page + '.html'));
+});
+
 test('新版 PWA 預快取必須重新取檔，不能將 HTTP 舊 HTML 裝入新 cache', async () => {
   const handlers = new Map();
   let captured = [];
