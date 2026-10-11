@@ -209,23 +209,61 @@ async function runFixture(t, script, mode, extraArgs = []) {
   }
   const preload = 'const category=' + JSON.stringify(fixtureCategory) + ';const questions=' + JSON.stringify(fixtureQuestions) +
     ';const manifest=' + JSON.stringify(fixtureManifest) + ';const mode=' + JSON.stringify(mode) + `;
+    const { createHash } = await import('node:crypto');
+    const builder = ${JSON.stringify(script === 'build_public_snapshot.mjs')};
+    const reuse = mode.startsWith('reuse');
+    if (builder && !reuse) manifest.banks.fixture.sourceUpdatedAt = 'older-version';
+    if (mode === 'reuseChangedRevision') manifest.banks.fixture.sourceUpdatedAt = 'older-version';
+    if (mode === 'reuseChangedCategory') manifest.categories[0].name = 'Older name';
+    if (mode === 'reuseWrongCount') manifest.banks.fixture.total = 1;
+    if (mode === 'reuseExpired') manifest.generatedAt = new Date(Date.now() - 25 * 3600000).toISOString();
+    if (mode === 'reuseFuture') manifest.generatedAt = new Date(Date.now() + 3600000).toISOString();
+    if (mode === 'reuseWrongSchema') manifest.schema = 2;
+    if (mode === 'reuseTraversal') manifest.banks.fixture.file = '../private.json';
+    let publicContent = JSON.stringify(questions.map(({ internalNote, ...question }) => question));
+    if (mode === 'reusePrivateField') publicContent = JSON.stringify(questions);
+    if (mode === 'reuseInvalidQuestions') publicContent = JSON.stringify([{ id: 1 }]);
+    if (mode === 'reuseInvalidJson') publicContent = 'invalid json';
+    if (mode === 'reuseTruncated') publicContent = JSON.stringify([questions[1]]);
+    if (['reusePrivateField', 'reuseInvalidQuestions', 'reuseInvalidJson', 'reuseTruncated'].includes(mode)) {
+      const checksum = createHash('sha256').update(publicContent).digest('hex');
+      manifest.banks.fixture.sha256 = checksum;
+      manifest.banks.fixture.file = checksum + '.json';
+    }
+    const mixed = mode === 'reuseMixed';
+    const secondCategory = { ...category, id: 'second' };
+    if (mixed) {
+      manifest.categories.push(secondCategory);
+      manifest.banks.second = { ...manifest.banks.fixture, sourceUpdatedAt: 'older-version' };
+    }
     let revisionCalls = 0;
     globalThis.fetch = async (input, options) => {
       if (options.method && options.method !== 'GET') throw new Error('unexpected write');
       const url = new URL(input);
       const action = url.searchParams.get('action');
       const reply = data => new Response(JSON.stringify(data));
-      if (action === 'categories') return reply([category]);
+      if (action === 'categories') return reply(mixed ? [category, secondCategory] : [category]);
       if (action === 'bankRevisions') {
         revisionCalls++;
-        if (mode === 'nullRevision') return reply(null);
-        if (mode === 'missingRevision') return reply({ revisions: { unrelated: 'fixture-v1' } });
-        return reply({ revisions: { fixture: mode === 'sourceChanged' && revisionCalls > 1 ? 'fixture-v2' : 'fixture-v1' } });
+        if (mode === 'nullRevision' || mode === 'reuseNullRevision') return reply(null);
+        if (mode === 'missingRevision' || mode === 'reuseMissingRevision') return reply({ revisions: { unrelated: 'fixture-v1' } });
+        if (mode === 'reuseAuthority404') return new Response('', { status: 404 });
+        const changed = (mode === 'sourceChanged' || mode === 'reuseSourceChanged') && revisionCalls > 1;
+        return reply({ revisions: { fixture: changed ? 'fixture-v2' : 'fixture-v1', ...(mixed ? { second: 'fixture-v2' } : {}) } });
       }
-      if (action === 'questions') return reply(mode === 'invalidBank' ? questions.slice(0, 1) : questions);
+      if (action === 'questions') {
+        console.log('FIXTURE_SOURCE_QUESTIONS:' + url.searchParams.get('cat'));
+        if (mode === 'reuseCorruptSource404') return new Response('', { status: 404 });
+        return reply(mode === 'invalidBank' ? questions.slice(0, 1) : questions);
+      }
       if (action) throw new Error('unexpected action');
-      if (url.pathname.endsWith('/manifest.json')) return reply(manifest);
-      return reply(mode === 'checksumMismatch' ? [] : questions.map(({ internalNote, ...question }) => question));
+      if (url.pathname.endsWith('/manifest.json')) {
+        if (mode === 'reuseMissingManifest') return new Response('', { status: 404 });
+        return reply(manifest);
+      }
+      if (mode === 'reuseMissingBank') return new Response('', { status: 404 });
+      if (['checksumMismatch', 'reuseChecksumMismatch', 'reuseCorruptSource404'].includes(mode)) return reply([]);
+      return new Response(publicContent);
     };`;
   const result = spawnSync(process.execPath, ['--import', 'data:text/javascript,' + encodeURIComponent(preload),
     join(root, 'tools', script), site, ...extraArgs], {
@@ -239,6 +277,7 @@ async function runFixture(t, script, mode, extraArgs = []) {
 test('actual builder preserves hashes, full counts, projection and publication allowlist', async t => {
   const result = await runFixture(t, 'build_public_snapshot.mjs', 'valid');
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /FIXTURE_SOURCE_QUESTIONS:fixture/);
   const manifest = JSON.parse(await readFile(join(result.site, 'banks/manifest.json'), 'utf8'));
   assert.equal(manifest.banks.fixture.sha256, hash);
   assert.equal(manifest.banks.fixture.total, 2);
@@ -247,6 +286,49 @@ test('actual builder preserves hashes, full counts, projection and publication a
   await assert.rejects(readFile(join(result.site, 'AGENTS.md')));
   assert.equal(await readFile(join(result.site, 'js/config.js'), 'utf8'), await readFile(join(root, 'js/config.js'), 'utf8'));
 });
+
+test('unchanged revision reuses only hash-verified public bytes without a questions request', async t => {
+  const result = await runFixture(t, 'build_public_snapshot.mjs', 'reuseValid');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /FIXTURE_SOURCE_QUESTIONS/);
+  assert.match(result.stdout, /"reusedBanks":1,"fetchedBanks":0/);
+  assert.equal(await readFile(join(result.site, 'banks', hash + '.json'), 'utf8'), content);
+});
+
+for (const mode of ['reuseChangedRevision', 'reuseChangedCategory', 'reuseWrongCount', 'reuseExpired',
+  'reuseFuture', 'reuseWrongSchema', 'reuseTraversal', 'reuseChecksumMismatch', 'reusePrivateField',
+  'reuseInvalidQuestions', 'reuseInvalidJson', 'reuseTruncated', 'reuseMissingManifest', 'reuseMissingBank']) {
+  test('untrusted or outdated reuse candidate requires fresh source: ' + mode, async t => {
+    const result = await runFixture(t, 'build_public_snapshot.mjs', mode);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /FIXTURE_SOURCE_QUESTIONS:fixture/);
+    assert.match(result.stdout, /"reusedBanks":0,"fetchedBanks":1/);
+    assert.equal(await readFile(join(result.site, 'banks', hash + '.json'), 'utf8'), content);
+  });
+}
+
+test('mixed bank revisions reuse unchanged category and fetch changed category', async t => {
+  const result = await runFixture(t, 'build_public_snapshot.mjs', 'reuseMixed');
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /FIXTURE_SOURCE_QUESTIONS:fixture/);
+  assert.match(result.stdout, /FIXTURE_SOURCE_QUESTIONS:second/);
+  assert.match(result.stdout, /"reusedBanks":1,"fetchedBanks":1/);
+  const manifest = JSON.parse(await readFile(join(result.site, 'banks/manifest.json'), 'utf8'));
+  assert.equal(manifest.banks.second.sourceUpdatedAt, 'fixture-v2');
+  assert.equal(Object.keys(manifest.banks).length, 2);
+});
+
+for (const [mode, code] of [['reuseNullRevision', 'MISSING_SOURCE_REVISIONS'],
+  ['reuseMissingRevision', 'MISSING_SOURCE_REVISIONS'], ['reuseAuthority404', 'HTTP_404'],
+  ['reuseSourceChanged', 'SOURCE_CHANGED'], ['reuseCorruptSource404', 'HTTP_404']]) {
+  test('reuse cannot bypass authority or readback gates: ' + mode, async t => {
+    const result = await runFixture(t, 'build_public_snapshot.mjs', mode);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, new RegExp(code));
+    await assert.rejects(readFile(join(result.site, 'banks/manifest.json')));
+    if (mode !== 'reuseCorruptSource404') assert.doesNotMatch(result.stdout, /FIXTURE_SOURCE_QUESTIONS/);
+  });
+}
 
 for (const [mode, code, rebuild] of [['invalidBank', 'INVALID_BANK', false], ['sourceChanged', 'SOURCE_CHANGED', true],
   ['missingRevision', 'MISSING_SOURCE_REVISIONS', false], ['nullRevision', 'MISSING_SOURCE_REVISIONS', false]]) {
