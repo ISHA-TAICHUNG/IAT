@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { createSnapshotReader, PublicationError, reportPublicationFailure } from './snapshot-publication.mjs';
+import { createSnapshotReader, PublicationError, reportPublicationFailure,
+  waitForPublishedManifest } from './snapshot-publication.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const context = {};
@@ -25,9 +26,13 @@ function compare(actual) {
 async function verify() {
   compare(await revisions());
   if (process.argv.includes('--public')) {
-    const manifest = await reader.readPublic(config.PUBLIC_BANKS_URL + 'manifest.json?verify=' + Date.now(),
-      { deadline: 20000 });
-    if (JSON.stringify(manifest) !== JSON.stringify(expected)) throw new PublicationError('PUBLIC_MANIFEST_MISMATCH', true);
+    const publicReader = createSnapshotReader({ maxAttempts: 1 });
+    await waitForPublishedManifest({
+      expected,
+      readManifest: deadline => publicReader.readPublic(
+        config.PUBLIC_BANKS_URL + 'manifest.json?verify=' + Date.now(), { deadline }),
+      checkSource: async () => compare(await revisions())
+    });
     let next = 0;
     let failed = false;
     async function verifyWorker() {

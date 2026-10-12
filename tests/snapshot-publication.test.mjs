@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import { createSnapshotReader, PublicationError, reportPublicationFailure,
-  snapshotFreshness, reportPublishedSnapshotAge } from '../tools/snapshot-publication.mjs';
+  snapshotFreshness, reportPublishedSnapshotAge, waitForPublishedManifest } from '../tools/snapshot-publication.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = data => new Response(JSON.stringify(data), { status: 200 });
@@ -198,6 +198,97 @@ const hash = createHash('sha256').update(content).digest('hex');
 const fixtureManifest = { schema: 1, generatedAt: new Date().toISOString(), categories: [fixtureCategory],
   banks: { fixture: { file: hash + '.json', sha256: hash, total: 2, sourceUpdatedAt: 'fixture-v1' } } };
 
+function publicationWait(extra = {}) {
+  let clock = Date.now();
+  const delays = [];
+  const logs = [];
+  const sourceChecks = [];
+  const options = { expected: fixtureManifest, readManifest: async () => fixtureManifest,
+    checkSource: async () => sourceChecks.push(clock), now: () => clock,
+    sleep: async ms => { delays.push(ms); clock += ms; }, log: line => logs.push(line),
+    timeoutMs: 30, intervalMs: 10, ...extra };
+  return { options, delays, logs, sourceChecks };
+}
+
+test('公開端延遲時等待同一索引到位，期間再次核對來源', async () => {
+  let reads = 0;
+  const previous = { ...fixtureManifest, generatedAt: new Date(Date.now() - 60000).toISOString() };
+  const state = publicationWait({ readManifest: async deadline => {
+    assert.ok(deadline > 0 && deadline <= 30);
+    return ++reads < 3 ? previous : fixtureManifest;
+  } });
+  assert.deepEqual(await waitForPublishedManifest(state.options), fixtureManifest);
+  assert.equal(reads, 3);
+  assert.deepEqual(state.delays, [10, 10]);
+  assert.equal(state.sourceChecks.length, 2);
+  assert.equal(JSON.parse(state.logs.at(-1)).event, 'published_manifest_ready');
+});
+
+test('JSON 物件鍵順序不影響比較，陣列順序與內容仍必須相同', async () => {
+  const reordered = { banks: fixtureManifest.banks, categories: fixtureManifest.categories,
+    generatedAt: fixtureManifest.generatedAt, schema: 1 };
+  const state = publicationWait({ readManifest: async () => reordered });
+  await waitForPublishedManifest(state.options);
+  assert.deepEqual(state.delays, []);
+  for (const manifest of [{ ...fixtureManifest, categories: [] },
+    { ...fixtureManifest, banks: { fixture: { ...fixtureManifest.banks.fixture, total: 1 } } }]) {
+    const invalid = publicationWait({ readManifest: async () => manifest });
+    await assert.rejects(waitForPublishedManifest(invalid.options));
+  }
+});
+
+test('公開索引持續不符時期限到就停止，不再派整個工作重建', async () => {
+  const state = publicationWait({ readManifest: async () => ({ ...fixtureManifest,
+    generatedAt: new Date(Date.now() - 60000).toISOString() }) });
+  await assert.rejects(waitForPublishedManifest(state.options), { code: 'PUBLIC_MANIFEST_MISMATCH', retryable: false });
+  assert.deepEqual(state.delays, [10, 10, 10]);
+  assert.equal(state.sourceChecks.length, 3);
+});
+
+test('等待期間來源變更或讀取失敗會立刻中止', async () => {
+  for (const error of [new PublicationError('SOURCE_CHANGED', true), new PublicationError('HTTP_404')]) {
+    const state = publicationWait({ readManifest: async () => ({ ...fixtureManifest,
+      generatedAt: new Date(Date.now() - 60000).toISOString() }), checkSource: async () => { throw error; } });
+    await assert.rejects(waitForPublishedManifest(state.options), { code: error.code });
+    assert.deepEqual(state.delays, []);
+  }
+});
+
+test('剛部署的公開路徑暫時 404 或逾時可等待，登入與格式錯誤立即停止', async () => {
+  for (const error of [new PublicationError('HTTP_404'), new PublicationError('REQUEST_TIMEOUT', true)]) {
+    let reads = 0;
+    const state = publicationWait({ readManifest: async () => {
+      if (++reads === 1) throw error;
+      return fixtureManifest;
+    } });
+    await waitForPublishedManifest(state.options);
+    assert.deepEqual(state.delays, [10]);
+  }
+  for (const error of [new PublicationError('HTTP_401'), new PublicationError('HTTP_403'),
+    new PublicationError('HTTP_429'), new PublicationError('INVALID_JSON'), new Error('synthetic_secret')]) {
+    const state = publicationWait({ readManifest: async () => { throw error; } });
+    await assert.rejects(waitForPublishedManifest(state.options));
+    assert.deepEqual(state.delays, []);
+    assert.equal(state.logs.join('').includes('synthetic_secret'), false);
+  }
+});
+
+test('公開索引等待預算不可無限或超過十分鐘', async () => {
+  for (const extra of [{ timeoutMs: 0 }, { timeoutMs: 600001 }, { timeoutMs: Infinity },
+    { intervalMs: 0 }, { intervalMs: 60001 }]) {
+    const state = publicationWait(extra);
+    await assert.rejects(waitForPublishedManifest(state.options), { code: 'INVALID_PUBLICATION_WAIT_BUDGET' });
+    assert.deepEqual(state.delays, []);
+  }
+  let clock = Date.now();
+  const late = publicationWait({ now: () => clock, readManifest: async () => {
+    clock += 31;
+    return fixtureManifest;
+  } });
+  await assert.rejects(waitForPublishedManifest(late.options), { code: 'PUBLIC_MANIFEST_MISMATCH', retryable: false });
+  assert.deepEqual(late.delays, []);
+});
+
 async function runFixture(t, script, mode, extraArgs = []) {
   const temp = await mkdtemp(join(tmpdir(), 'iat-publication-test-'));
   t.after(() => rm(temp, { recursive: true, force: true }));
@@ -259,6 +350,8 @@ async function runFixture(t, script, mode, extraArgs = []) {
       if (action) throw new Error('unexpected action');
       if (url.pathname.endsWith('/manifest.json')) {
         if (mode === 'reuseMissingManifest') return new Response('', { status: 404 });
+        if (mode === 'manifestOrderChanged') return reply({ banks: manifest.banks,
+          generatedAt: manifest.generatedAt, categories: manifest.categories, schema: manifest.schema });
         return reply(manifest);
       }
       if (mode === 'reuseMissingBank') return new Response('', { status: 404 });
@@ -342,7 +435,8 @@ for (const [mode, code, rebuild] of [['invalidBank', 'INVALID_BANK', false], ['s
 }
 
 test('actual verifier checks both source revisions and all public hashes', async t => {
-  for (const [mode, status, code] of [['valid', 0, ''], ['checksumMismatch', 1, 'PUBLIC_BANK_CHECKSUM_MISMATCH'],
+  for (const [mode, status, code] of [['valid', 0, ''], ['manifestOrderChanged', 0, ''],
+    ['checksumMismatch', 1, 'PUBLIC_BANK_CHECKSUM_MISMATCH'],
     ['sourceChanged', 1, 'SOURCE_CHANGED']]) {
     const result = await runFixture(t, 'verify_public_snapshot.mjs', mode, ['--public']);
     assert.equal(result.status, status, result.stderr);
