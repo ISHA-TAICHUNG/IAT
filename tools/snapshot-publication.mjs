@@ -1,4 +1,5 @@
 import { appendFile } from 'node:fs/promises';
+import { isDeepStrictEqual } from 'node:util';
 
 const READ_ACTIONS = new Set(['categories', 'questions', 'bankRevisions']);
 const TRANSIENT_HTTP = new Set([408, 500, 502, 503, 504]);
@@ -91,6 +92,45 @@ export function snapshotFreshness(manifest, now = Date.now()) {
   const age = Math.max(0, now - generated);
   return { generatedAt: new Date(generated).toISOString(), ageHours: Number((age / HOUR_MS).toFixed(2)),
     state: age >= 24 * HOUR_MS ? 'expired' : age >= 12 * HOUR_MS ? 'aging' : 'fresh' };
+}
+
+// Pages 回報部署成功後，公開快取可能仍是前一版；等待同一份產物，不重建時間戳。
+export async function waitForPublishedManifest({
+  expected, readManifest, checkSource, now = Date.now,
+  sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), log = console.log,
+  timeoutMs = 600000, intervalMs = 15000
+}) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 600000 ||
+      !Number.isInteger(intervalMs) || intervalMs < 1 || intervalMs > 60000) {
+    throw new PublicationError('INVALID_PUBLICATION_WAIT_BUDGET');
+  }
+  const deadline = now() + timeoutMs;
+  let attempt = 0;
+  while (now() < deadline) {
+    attempt++;
+    let manifest;
+    let code = 'PUBLIC_MANIFEST_MISMATCH';
+    try {
+      manifest = await readManifest(Math.min(20000, deadline - now()));
+      snapshotFreshness(manifest, now());
+    } catch (error) {
+      if (!(error instanceof PublicationError) || (!error.retryable && error.code !== 'HTTP_404')) throw error;
+      code = error.code;
+    }
+    if (now() >= deadline) break;
+    if (manifest && isDeepStrictEqual(manifest, expected)) {
+      log(JSON.stringify({ event: 'published_manifest_ready', attempt }));
+      return manifest;
+    }
+    log(JSON.stringify({ event: 'published_manifest_wait', attempt, code,
+      expectedGeneratedAt: expected.generatedAt, observedGeneratedAt: manifest?.generatedAt }));
+    await checkSource();
+    const remaining = deadline - now();
+    if (remaining <= 0) break;
+    await sleep(Math.min(intervalMs, remaining));
+  }
+  // 等待期限耗盡後保留失敗，不再派新工作產生另一份索引。
+  throw new PublicationError('PUBLIC_MANIFEST_MISMATCH');
 }
 
 export async function reportPublishedSnapshotAge(baseUrl, {
