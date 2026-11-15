@@ -1,24 +1,24 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20261011a";
+const CACHE_NAME = "exam-v20261115a";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
     "./exam.html",
     "./result.html",
     "./manifest.json",
-    "./css/style.css?v=20261011a",
-    "./js/config.js?v=20261011a",
-    "./js/i18n.js?v=20261011a",
-    "./js/utils.js?v=20261011a",
-    "./js/data-loader.js?v=20261011a",
-    "./js/app.js?v=20261011a",
-    "./js/exam.js?v=20261011a",
-    "./js/result.js?v=20261011a",
+    "./css/style.css?v=20261115a",
+    "./js/config.js?v=20261115a",
+    "./js/i18n.js?v=20261115a",
+    "./js/utils.js?v=20261115a",
+    "./js/data-loader.js?v=20261115a",
+    "./js/app.js?v=20261115a",
+    "./js/exam.js?v=20261115a",
+    "./js/result.js?v=20261115a",
     "./query.html",
-    "./css/query.css?v=20261011a",
-    "./js/query.js?v=20261011a",
+    "./css/query.css?v=20261115a",
+    "./js/query.js?v=20261115a",
     "./exam-query.html",
-    "./js/exam-query.js?v=20261011a",
+    "./js/exam-query.js?v=20261115a",
 ];
 
 // 安裝時避開 HTTP 舊快取，避免新 cache 收到引用舊版 CSS/JS 的 HTML。
@@ -72,6 +72,22 @@ self.addEventListener("fetch", (e) => {
                 } catch (_) { }
             }
             return response;
+        }));
+        return;
+    }
+
+    // AI 解析檔：Network-First（解析更新不用等版號），離線或抓不到才用上次成功的快取。
+    if (/\/explanations\/[^/]+\.json$/.test(url.pathname)) {
+        e.respondWith(fetch(e.request).then(function(response) {
+            if (response.ok) {
+                var copy = response.clone();
+                var saving = caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { });
+                // 個別瀏覽器若在這個時點不接受 waitUntil，就照樣存快取，不讓已拿到的解析因此失敗
+                try { e.waitUntil(saving); } catch (_) { }
+            }
+            return response;
+        }).catch(function() {
+            return caches.match(e.request).then(function(cached) { return cached || Response.error(); });
         }));
         return;
     }

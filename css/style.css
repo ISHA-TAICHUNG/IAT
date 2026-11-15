@@ -1532,6 +1532,53 @@ a {
   font-style: italic;
 }
 
+.wi-explanation {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+  border-radius: 6px;
+}
+
+.wi-explanation-title {
+  font-weight: 600;
+  font-size: .85rem;
+  margin-bottom: 4px;
+}
+
+.wi-explanation-body {
+  font-size: .85rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.wi-law {
+  margin-top: 8px;
+  font-size: .8rem;
+  line-height: 1.6;
+}
+
+.wi-law-label {
+  display: block;
+  color: var(--gray-700);
+}
+
+.wi-law-ref {
+  overflow-wrap: anywhere;
+}
+
+a.wi-law-ref {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.wl-ai-note {
+  margin: 0 0 12px;
+  font-size: .78rem;
+  line-height: 1.6;
+  color: var(--gray-700);
+}
+
 /* ===== Toast ===== */
 .toast {
   position: fixed;

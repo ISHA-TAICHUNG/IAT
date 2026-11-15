@@ -21,8 +21,153 @@ function formatAns(q, chosen) { return formatChoices(q, ansArrayOf(chosen)); }
 function formatCorrect(q) { return formatChoices(q, correctArrayOf(q)); }
 
 // ===== 計分 =====
+function hasExplanation(entry) {
+  return !!entry && typeof entry.explanation === 'string' && entry.explanation.trim() !== '';
+}
+// 實際顯示了解析的題（key = 錯題清單題號 idx）。不寫回題目物件，避免「錯題複習」把解析欄位帶進下一次測驗
+var explained = {};
+
+// 法規依據：每條連到全國法規資料庫該條文；網址不是 law.moj.gov.tw 就只顯示文字，不做連結
+var LAW_URL_PREFIX = 'https://law.moj.gov.tw/';
+// 「第6條」→6、「第3-1條」「第3條之1」→3.001；抓不到條號的排最後
+function articleKey(article) {
+  var m = article.match(/(\d+)\s*條?(?:\s*(?:-|之)\s*(\d+))?/);
+  return m ? Number(m[1]) + (m[2] ? Number(m[2]) / 1000 : 0) : Infinity;
+}
+function articleText(r) {
+  if (typeof r.article === 'number' && isFinite(r.article)) return '第' + r.article + '條';
+  return typeof r.article === 'string' ? r.article.trim() : '';
+}
+function buildLegalBasis(list) {
+  if (!Array.isArray(list)) return null;
+  var seen = {};
+  // 濾掉壞資料，同一法規同一條只留一筆
+  var refs = list.filter(function(r) {
+    if (!r || typeof r.law !== 'string' || !r.law.trim()) return false;
+    var key = r.law.trim() + '\u0000' + articleText(r);
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+  if (refs.length === 0) return null;
+  var row = document.createElement('div');
+  row.className = 'wi-law';
+  var label = document.createElement('span');
+  label.className = 'wi-law-label';
+  label.textContent = t('result.legalBasis');
+  row.appendChild(label);
+  // 同一部法規的多條合成一行（法規名只寫一次），縮短版面
+  var groups = [], byLaw = {};
+  refs.forEach(function(r) {
+    var name = r.law.trim();
+    if (!byLaw[name]) { byLaw[name] = { law: name, refs: [] }; groups.push(byLaw[name]); }
+    byLaw[name].refs.push(r);
+  });
+  groups.forEach(function(g) {
+    g.refs.sort(function(a, b) { return articleKey(articleText(a)) - articleKey(articleText(b)); });
+    var line = document.createElement('div');
+    line.className = 'wi-law-group';
+    line.appendChild(document.createTextNode(g.law + ' '));
+    g.refs.forEach(function(r, i) {
+      if (i > 0) line.appendChild(document.createTextNode('、'));
+      var text = articleText(r) || t('result.legalBasis.law');
+      var el;
+      if (typeof r.url === 'string' && r.url.indexOf(LAW_URL_PREFIX) === 0) {
+        el = document.createElement('a');
+        el.href = r.url;
+        el.target = '_blank';
+        el.rel = 'noopener noreferrer';
+        el.textContent = text + '↗';
+      } else {
+        el = document.createElement('span');
+        el.textContent = text;
+      }
+      el.className = 'wi-law-ref';
+      line.appendChild(el);
+    });
+    row.appendChild(line);
+  });
+  return row;
+}
+
+// 解析區塊（📘 解析＋📜 法規依據）；沒有解析文字回傳 null
+function buildExplanationBlock(entry) {
+  if (!hasExplanation(entry)) return null;
+  var exDiv = document.createElement('div');
+  exDiv.className = 'wi-explanation';
+  var exTitle = document.createElement('div');
+  exTitle.className = 'wi-explanation-title';
+  exTitle.textContent = t('result.explanation');
+  var exBody = document.createElement('div');
+  exBody.className = 'wi-explanation-body';
+  exBody.textContent = entry.explanation;
+  exDiv.appendChild(exTitle);
+  exDiv.appendChild(exBody);
+  var lawRow = buildLegalBasis(entry.legalBasis);
+  if (lawRow) exDiv.appendChild(lawRow);
+  return exDiv;
+}
+
+// 題目指紋：SHA-256(JSON.stringify([題幹, 選項, 答案])) 前 16 碼 hex。
+// 必須和 tools/ai_explain 的 site_fp 一致；題目或答案被改後指紋對不上，解析自動隱藏。
+// 考試時選項會被 shuffleOptions 洗牌，所以用洗牌前保留的 origOptions／origAnswer（舊資料沒有就用現有的）。
+function questionFingerprint(q) {
+  var options = q.origOptions || q.options;
+  var answer = q.origAnswer !== undefined ? q.origAnswer : q.answer;
+  var bytes = new TextEncoder().encode(JSON.stringify([q.q, options, answer]));
+  return crypto.subtle.digest('SHA-256', bytes).then(function(buf) {
+    return Array.from(new Uint8Array(buf)).slice(0, 8).map(function(b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  });
+}
+
+// 解析來自網站獨立檔 explanations/<catId>.json（不放在題庫）。任何一步失敗都安靜略過，畫面維持原樣。
+function loadExplanations() {
+  if (wrongList.length === 0 || typeof fetch !== 'function' || typeof crypto === 'undefined' ||
+      !crypto.subtle || typeof TextEncoder === 'undefined') return;
+  var request;
+  try {
+    request = fetch('explanations/' + encodeURIComponent(catId) + '.json').then(function(res) {
+      if (!res || !res.ok) throw new Error('no explanations');
+      return res.json();
+    });
+  } catch (e) { return; }
+  request.then(function(file) {
+    if (!file || file.schema !== 1 || !file.items || typeof file.items !== 'object') return;
+    return Promise.all(wrongList.map(function(item) {
+      var key = String(item.q.id);
+      if (!Object.prototype.hasOwnProperty.call(file.items, key)) return null;
+      var entry = file.items[key];
+      if (!entry || typeof entry.fp !== 'string' || typeof entry.explanation !== 'string') return null;
+      return questionFingerprint(item.q).then(function(fp) {
+        if (fp !== entry.fp) return null;
+        return { item: item, entry: entry };
+      });
+    })).then(function(matches) {
+      var shown = 0;
+      matches.forEach(function(m) {
+        if (!m) return;
+        var block = buildExplanationBlock(m.entry);
+        if (!block) return;
+        explained[m.item.idx] = true;
+        m.item.wi.insertBefore(block, m.item.fbBtn);
+        shown++;
+      });
+      // 但書整頁只放一次（至少有一題真的顯示解析才放）
+      if (shown > 0) {
+        var aiNote = document.createElement('p');
+        aiNote.className = 'wl-ai-note';
+        aiNote.textContent = t('result.explanation.note');
+        wrongListEl.insertBefore(aiNote, wrongList[0].wi);
+      }
+    });
+  }).catch(function() { /* 解析是加分項，失敗不影響成績頁 */ });
+}
+
 var correct = 0, wrong = 0, hinted = 0, skipped = 0;
 var wrongList = [];
+var wrongListEl = null;
 
 questions.forEach(function(q, i) {
   var ans = answers[i];
@@ -173,6 +318,7 @@ area.appendChild(card);
 if (wrongList.length > 0) {
   var wl = document.createElement('div');
   wl.className = 'wrong-list';
+  wrongListEl = wl;
   var wlH2 = document.createElement('h2');
   wlH2.textContent = wrongList.length + ' ' + t('mode.questions');
   wl.appendChild(wlH2);
@@ -227,10 +373,13 @@ if (wrongList.length > 0) {
     fbBtn.textContent = t('exam.btn.feedback');
     fbBtn.onclick = function() { openResultFeedback(item.idx - 1); };
     wi.appendChild(fbBtn);
+    item.wi = wi;
+    item.fbBtn = fbBtn;
 
     wl.appendChild(wi);
   });
   area.appendChild(wl);
+  loadExplanations();
 } else {
   var perfect = document.createElement('p');
   perfect.style.cssText = 'text-align:center;color:var(--success);font-weight:700;font-size:1.1rem;margin:24px;';
@@ -295,8 +444,22 @@ function startReview() {
 // ===== 反饋功能 =====
 var resultFbQIndex = null;
 
+// 「解析有誤」只在該題有解析時出現；用增刪 option 而非 hidden，因為 iOS Safari 不會隱藏 option
+var EXPLANATION_FB_TYPE = '解析有誤';
+function syncExplanationFbOption(idx) {
+  var sel = document.getElementById("result-fb-type");
+  var opt = sel.querySelector('option[value="' + EXPLANATION_FB_TYPE + '"]');
+  if (explained[idx]) {
+    if (!opt) sel.appendChild(new Option(t('fb.type.explanation'), EXPLANATION_FB_TYPE));
+  } else if (opt) {
+    if (opt.selected) sel.selectedIndex = 0;
+    opt.remove();
+  }
+}
+
 function openResultFeedback(qIdx) {
   resultFbQIndex = qIdx;
+  syncExplanationFbOption(qIdx + 1);
   document.getElementById("result-fb-modal").classList.add("open");
 }
 function closeResultFeedback() {
