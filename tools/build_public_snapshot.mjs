@@ -19,10 +19,7 @@ const config = context.config;
 const clientId = 'c_' + randomUUID().replaceAll('-', '');
 const reader = createSnapshotReader({ gasUrl: config.GAS_URL, token: config.API_TOKEN, clientId });
 const request = reader.readGas;
-// explanation／legalBasis 是 AI 解析（tools/ai_explain/README.md）；沒有時照舊被 hasOwn 濾掉，
-// 放進白名單讓 GitHub Pages 快照與 GAS 即時來源顯示一致。
-const publicFields = ['id', 'q', 'options', 'answer', 'multi', 'type', 'subject', 'image', 'optionImages',
-  'explanation', 'legalBasis'];
+const publicFields = ['id', 'q', 'options', 'answer', 'multi', 'type', 'subject', 'image', 'optionImages'];
 
 async function loadReuseManifest() {
   try {
@@ -130,7 +127,7 @@ async function build() {
   const allowedRoot = new Set(['index.html', 'exam.html', 'result.html', 'query.html',
     'exam-query.html', 'sw.js', 'manifest.json', 'og-image.png']);
   for (const file of tracked) {
-    if (!allowedRoot.has(file) && !/^(js|css|icons|images)\//.test(file)) continue;
+    if (!allowedRoot.has(file) && !/^(js|css|icons|images|explanations)\//.test(file)) continue;
     await mkdir(dirname(resolve(output, file)), { recursive: true });
     await writeFile(resolve(output, file), await readFile(resolve(root, file)));
   }

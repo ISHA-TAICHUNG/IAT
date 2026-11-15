@@ -76,6 +76,20 @@ self.addEventListener("fetch", (e) => {
         return;
     }
 
+    // AI 解析檔：Network-First（解析更新不用等版號），離線或抓不到才用上次成功的快取。
+    if (/\/explanations\/[^/]+\.json$/.test(url.pathname)) {
+        e.respondWith(fetch(e.request).then(function(response) {
+            if (response.ok) {
+                var copy = response.clone();
+                caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { });
+            }
+            return response;
+        }).catch(function() {
+            return caches.match(e.request).then(function(cached) { return cached || Response.error(); });
+        }));
+        return;
+    }
+
     // 靜態資源 → Cache-First
     e.respondWith(
         caches.match(e.request).then((cached) => cached || fetch(e.request))

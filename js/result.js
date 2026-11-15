@@ -88,8 +88,82 @@ function buildLegalBasis(list) {
   return row;
 }
 
+// 解析區塊（📘 解析＋📜 法規依據）；沒有解析文字回傳 null
+function buildExplanationBlock(q) {
+  if (!hasExplanation(q)) return null;
+  var exDiv = document.createElement('div');
+  exDiv.className = 'wi-explanation';
+  var exTitle = document.createElement('div');
+  exTitle.className = 'wi-explanation-title';
+  exTitle.textContent = t('result.explanation');
+  var exBody = document.createElement('div');
+  exBody.className = 'wi-explanation-body';
+  exBody.textContent = q.explanation;
+  exDiv.appendChild(exTitle);
+  exDiv.appendChild(exBody);
+  var lawRow = buildLegalBasis(q.legalBasis);
+  if (lawRow) exDiv.appendChild(lawRow);
+  return exDiv;
+}
+
+// 題目指紋：SHA-256(JSON.stringify([題幹, 選項, 答案])) 前 16 碼 hex。
+// 必須和 tools/ai_explain 的 site_fp 一致；題目或答案被改後指紋對不上，解析自動隱藏。
+function questionFingerprint(q) {
+  var bytes = new TextEncoder().encode(JSON.stringify([q.q, q.options, q.answer]));
+  return crypto.subtle.digest('SHA-256', bytes).then(function(buf) {
+    return Array.from(new Uint8Array(buf)).slice(0, 8).map(function(b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  });
+}
+
+// 解析來自網站獨立檔 explanations/<catId>.json（不放在題庫）。任何一步失敗都安靜略過，畫面維持原樣。
+function loadExplanations() {
+  if (wrongList.length === 0 || typeof fetch !== 'function' || typeof crypto === 'undefined' ||
+      !crypto.subtle || typeof TextEncoder === 'undefined') return;
+  var request;
+  try {
+    request = fetch('explanations/' + encodeURIComponent(catId) + '.json').then(function(res) {
+      if (!res || !res.ok) throw new Error('no explanations');
+      return res.json();
+    });
+  } catch (e) { return; }
+  request.then(function(file) {
+    if (!file || file.schema !== 1 || !file.items || typeof file.items !== 'object') return;
+    return Promise.all(wrongList.map(function(item) {
+      var key = String(item.q.id);
+      if (!Object.prototype.hasOwnProperty.call(file.items, key)) return null;
+      var entry = file.items[key];
+      if (!entry || typeof entry.fp !== 'string' || typeof entry.explanation !== 'string') return null;
+      return questionFingerprint(item.q).then(function(fp) {
+        if (fp !== entry.fp) return null;
+        return { item: item, entry: entry };
+      });
+    })).then(function(matches) {
+      var shown = 0;
+      matches.forEach(function(m) {
+        if (!m) return;
+        m.item.q.explanation = m.entry.explanation;
+        m.item.q.legalBasis = m.entry.legalBasis;
+        var block = buildExplanationBlock(m.item.q);
+        if (!block) return;
+        m.item.wi.insertBefore(block, m.item.fbBtn);
+        shown++;
+      });
+      // 但書整頁只放一次（至少有一題真的顯示解析才放）
+      if (shown > 0) {
+        var aiNote = document.createElement('p');
+        aiNote.className = 'wl-ai-note';
+        aiNote.textContent = t('result.explanation.note');
+        wrongListEl.insertBefore(aiNote, wrongList[0].wi);
+      }
+    });
+  }).catch(function() { /* 解析是加分項，失敗不影響成績頁 */ });
+}
+
 var correct = 0, wrong = 0, hinted = 0, skipped = 0;
 var wrongList = [];
+var wrongListEl = null;
 
 questions.forEach(function(q, i) {
   var ans = answers[i];
@@ -240,17 +314,10 @@ area.appendChild(card);
 if (wrongList.length > 0) {
   var wl = document.createElement('div');
   wl.className = 'wrong-list';
+  wrongListEl = wl;
   var wlH2 = document.createElement('h2');
   wlH2.textContent = wrongList.length + ' ' + t('mode.questions');
   wl.appendChild(wlH2);
-
-  // 但書整頁只放一次，避免每題重複一長句把版面拉長
-  if (wrongList.some(function(item) { return hasExplanation(item.q); })) {
-    var aiNote = document.createElement('p');
-    aiNote.className = 'wl-ai-note';
-    aiNote.textContent = t('result.explanation.note');
-    wl.appendChild(aiNote);
-  }
 
   wrongList.forEach(function(item) {
     var wi = document.createElement('div');
@@ -297,32 +364,18 @@ if (wrongList.length > 0) {
     metaDiv.appendChild(correctSpan);
     wi.appendChild(metaDiv);
 
-    // 解析只在題庫有 explanation 欄位時顯示；目前題庫沒有此欄位，畫面與行為完全不變
-    if (hasExplanation(item.q)) {
-      var exDiv = document.createElement('div');
-      exDiv.className = 'wi-explanation';
-      var exTitle = document.createElement('div');
-      exTitle.className = 'wi-explanation-title';
-      exTitle.textContent = t('result.explanation');
-      var exBody = document.createElement('div');
-      exBody.className = 'wi-explanation-body';
-      exBody.textContent = item.q.explanation;
-      exDiv.appendChild(exTitle);
-      exDiv.appendChild(exBody);
-      var lawRow = buildLegalBasis(item.q.legalBasis);
-      if (lawRow) exDiv.appendChild(lawRow);
-      wi.appendChild(exDiv);
-    }
-
     var fbBtn = document.createElement('button');
     fbBtn.className = 'btn btn-feedback';
     fbBtn.textContent = t('exam.btn.feedback');
     fbBtn.onclick = function() { openResultFeedback(item.idx - 1); };
     wi.appendChild(fbBtn);
+    item.wi = wi;
+    item.fbBtn = fbBtn;
 
     wl.appendChild(wi);
   });
   area.appendChild(wl);
+  loadExplanations();
 } else {
   var perfect = document.createElement('p');
   perfect.style.cssText = 'text-align:center;color:var(--success);font-weight:700;font-size:1.1rem;margin:24px;';
