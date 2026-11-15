@@ -81,7 +81,9 @@ self.addEventListener("fetch", (e) => {
         e.respondWith(fetch(e.request).then(function(response) {
             if (response.ok) {
                 var copy = response.clone();
-                e.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { }));
+                var saving = caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { });
+                // 個別瀏覽器若在這個時點不接受 waitUntil，就照樣存快取，不讓已拿到的解析因此失敗
+                try { e.waitUntil(saving); } catch (_) { }
             }
             return response;
         }).catch(function() {
