@@ -21,9 +21,11 @@ function formatAns(q, chosen) { return formatChoices(q, ansArrayOf(chosen)); }
 function formatCorrect(q) { return formatChoices(q, correctArrayOf(q)); }
 
 // ===== 計分 =====
-function hasExplanation(q) {
-  return typeof q.explanation === 'string' && q.explanation.trim() !== '';
+function hasExplanation(entry) {
+  return !!entry && typeof entry.explanation === 'string' && entry.explanation.trim() !== '';
 }
+// 實際顯示了解析的題（key = 錯題清單題號 idx）。不寫回題目物件，避免「錯題複習」把解析欄位帶進下一次測驗
+var explained = {};
 
 // 法規依據：每條連到全國法規資料庫該條文；網址不是 law.moj.gov.tw 就只顯示文字，不做連結
 var LAW_URL_PREFIX = 'https://law.moj.gov.tw/';
@@ -89,8 +91,8 @@ function buildLegalBasis(list) {
 }
 
 // 解析區塊（📘 解析＋📜 法規依據）；沒有解析文字回傳 null
-function buildExplanationBlock(q) {
-  if (!hasExplanation(q)) return null;
+function buildExplanationBlock(entry) {
+  if (!hasExplanation(entry)) return null;
   var exDiv = document.createElement('div');
   exDiv.className = 'wi-explanation';
   var exTitle = document.createElement('div');
@@ -98,18 +100,21 @@ function buildExplanationBlock(q) {
   exTitle.textContent = t('result.explanation');
   var exBody = document.createElement('div');
   exBody.className = 'wi-explanation-body';
-  exBody.textContent = q.explanation;
+  exBody.textContent = entry.explanation;
   exDiv.appendChild(exTitle);
   exDiv.appendChild(exBody);
-  var lawRow = buildLegalBasis(q.legalBasis);
+  var lawRow = buildLegalBasis(entry.legalBasis);
   if (lawRow) exDiv.appendChild(lawRow);
   return exDiv;
 }
 
 // 題目指紋：SHA-256(JSON.stringify([題幹, 選項, 答案])) 前 16 碼 hex。
 // 必須和 tools/ai_explain 的 site_fp 一致；題目或答案被改後指紋對不上，解析自動隱藏。
+// 考試時選項會被 shuffleOptions 洗牌，所以用洗牌前保留的 origOptions／origAnswer（舊資料沒有就用現有的）。
 function questionFingerprint(q) {
-  var bytes = new TextEncoder().encode(JSON.stringify([q.q, q.options, q.answer]));
+  var options = q.origOptions || q.options;
+  var answer = q.origAnswer !== undefined ? q.origAnswer : q.answer;
+  var bytes = new TextEncoder().encode(JSON.stringify([q.q, options, answer]));
   return crypto.subtle.digest('SHA-256', bytes).then(function(buf) {
     return Array.from(new Uint8Array(buf)).slice(0, 8).map(function(b) {
       return ('0' + b.toString(16)).slice(-2);
@@ -143,10 +148,9 @@ function loadExplanations() {
       var shown = 0;
       matches.forEach(function(m) {
         if (!m) return;
-        m.item.q.explanation = m.entry.explanation;
-        m.item.q.legalBasis = m.entry.legalBasis;
-        var block = buildExplanationBlock(m.item.q);
+        var block = buildExplanationBlock(m.entry);
         if (!block) return;
+        explained[m.item.idx] = true;
         m.item.wi.insertBefore(block, m.item.fbBtn);
         shown++;
       });
@@ -442,10 +446,10 @@ var resultFbQIndex = null;
 
 // 「解析有誤」只在該題有解析時出現；用增刪 option 而非 hidden，因為 iOS Safari 不會隱藏 option
 var EXPLANATION_FB_TYPE = '解析有誤';
-function syncExplanationFbOption(q) {
+function syncExplanationFbOption(idx) {
   var sel = document.getElementById("result-fb-type");
   var opt = sel.querySelector('option[value="' + EXPLANATION_FB_TYPE + '"]');
-  if (hasExplanation(q)) {
+  if (explained[idx]) {
     if (!opt) sel.appendChild(new Option(t('fb.type.explanation'), EXPLANATION_FB_TYPE));
   } else if (opt) {
     if (opt.selected) sel.selectedIndex = 0;
@@ -455,7 +459,7 @@ function syncExplanationFbOption(q) {
 
 function openResultFeedback(qIdx) {
   resultFbQIndex = qIdx;
-  syncExplanationFbOption(questions[qIdx]);
+  syncExplanationFbOption(qIdx + 1);
   document.getElementById("result-fb-modal").classList.add("open");
 }
 function closeResultFeedback() {

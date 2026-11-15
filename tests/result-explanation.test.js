@@ -308,3 +308,58 @@ test('條號：數字轉字串、「之」與「-」同樣排序、同條去重'
   assert.equal(byClass(area, 'wi-law-group')[0].textContent,
     '職業安全衛生法 第3條↗、第3條之1↗、第6條↗、第13條2項↗、第13條之1↗');
 });
+
+// ===== 考試時選項會被 shuffleOptions 洗牌：指紋要用洗牌前保留的原始選項與答案 =====
+const jsonCopy = v => JSON.parse(JSON.stringify(v));
+const shuffleQuestions = [
+  { id: 30, q: '單選洗牌', options: ['甲', '乙', '丙', '丁'], answer: 2 },
+  { id: 31, q: '含綜合選項', options: ['甲', '乙', '丙', '以上皆是'], answer: 3 },
+  { id: 32, q: '複選洗牌', options: ['a', 'b', 'c', 'd', 'e'], answer: [0, 3, 4] },
+];
+
+test('題目先經真正的 shuffleOptions（含 JSON 往返）再進結果頁，解析仍顯示', async () => {
+  const helper = loadResult([base], [{ chosen: 0 }], {}).context;
+  for (let round = 0; round < 20; round++) {
+    const originals = jsonCopy(shuffleQuestions);
+    const shown = jsonCopy(shuffleQuestions).map(q => jsonCopy(helper.shuffleOptions(q)));
+    const file = siteFile(Object.fromEntries(originals.map(q => [q.id, entry(q)])));
+    const { area } = await render(shown, shown.map(() => ({ chosen: null })), file);
+    assert.equal(byClass(area, 'wi-explanation').length, 3, 'round ' + round);
+  }
+});
+
+test('錯題複習第二次洗牌後（保留第一次的原始值），解析仍顯示', async () => {
+  const helper = loadResult([base], [{ chosen: 0 }], {}).context;
+  const original = jsonCopy(shuffleQuestions[2]);
+  const first = jsonCopy(helper.shuffleOptions(jsonCopy(original)));
+  const second = jsonCopy(helper.shuffleOptions(jsonCopy(first)));
+  assert.deepEqual(second.origOptions, original.options);
+  assert.deepEqual(second.origAnswer, original.answer);
+  const { area } = await render([second], [{ chosen: null }], siteFile({ 32: entry(original) }));
+  assert.equal(byClass(area, 'wi-explanation').length, 1);
+});
+
+test('舊的 examResult 沒有 origOptions：照舊用 options 與 answer', async () => {
+  const q = { ...shuffleQuestions[0] };
+  const { area } = await render([q], [{ chosen: 0 }], siteFile({ 30: entry(q) }));
+  assert.equal(byClass(area, 'wi-explanation').length, 1);
+});
+
+test('有 origOptions 時以原始值為準：只拿洗牌後的內容算指紋會對不上', async () => {
+  const original = shuffleQuestions[0];
+  const shuffled = { ...original, options: ['丁', '丙', '乙', '甲'], answer: 1,
+    origOptions: original.options, origAnswer: original.answer };
+  const bad = await render([shuffled], [{ chosen: 0 }], siteFile({ 30: entry({ ...original, options: shuffled.options, answer: 1 }) }));
+  assert.equal(byClass(bad.area, 'wi-explanation').length, 0);
+});
+
+test('錯題複習用的題目不帶解析欄位，且解析不寫回題目物件', async () => {
+  const { context, area } = await render([base], [{ chosen: 0 }], siteFile({ 20: entry(base) }));
+  assert.equal(byClass(area, 'wi-explanation').length, 1);
+  context.startReview();
+  const saved = JSON.parse(context.sessionStorage.getItem('reviewQuestions'));
+  assert.equal(saved.length, 1);
+  for (const q of saved) {
+    assert.ok(!('explanation' in q) && !('legalBasis' in q));
+  }
+});

@@ -104,6 +104,11 @@ function shuffleArray(arr) {
 /** 將題目的選項隨機排列，同時更新 answer 索引
  *  「以上皆是/以上皆非」等綜合選項固定在最後，不參與亂序 */
 function shuffleOptions(question) {
+    // 第一次洗牌時保留原始選項與答案（結果頁要用它比對網站解析檔的題目指紋；複習、續考會帶著這兩欄）
+    if (!question.origOptions) {
+        question.origOptions = question.options.slice();
+        question.origAnswer = Array.isArray(question.answer) ? question.answer.slice() : question.answer;
+    }
     const opts = question.options;
     const origOptImages = question.optionImages ? question.optionImages.slice() : null;
     const pinPatterns = ['以上皆是', '以上皆非', '以上皆對', '以上皆錯', '以上都是', '以上均是'];

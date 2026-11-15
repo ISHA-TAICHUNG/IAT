@@ -127,7 +127,8 @@ async function build() {
   const allowedRoot = new Set(['index.html', 'exam.html', 'result.html', 'query.html',
     'exam-query.html', 'sw.js', 'manifest.json', 'og-image.png']);
   for (const file of tracked) {
-    if (!allowedRoot.has(file) && !/^(js|css|icons|images|explanations)\//.test(file)) continue;
+    if (!allowedRoot.has(file) && !/^(js|css|icons|images)\//.test(file) &&
+        !/^explanations\/[^/]+\.json$/.test(file)) continue;
     await mkdir(dirname(resolve(output, file)), { recursive: true });
     await writeFile(resolve(output, file), await readFile(resolve(root, file)));
   }

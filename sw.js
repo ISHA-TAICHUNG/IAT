@@ -81,7 +81,7 @@ self.addEventListener("fetch", (e) => {
         e.respondWith(fetch(e.request).then(function(response) {
             if (response.ok) {
                 var copy = response.clone();
-                caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { });
+                e.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.put(e.request, copy); }).catch(function() { }));
             }
             return response;
         }).catch(function() {
