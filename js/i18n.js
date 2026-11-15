@@ -156,6 +156,17 @@ const I18N = {
   'result.score.unit': { 'zh-TW': '分', vi: 'điểm', id: 'poin', th: 'คะแนน', en: 'pts' },
   'result.your.answer': { 'zh-TW': '你的答案：', vi: 'Đáp án của bạn:', id: 'Jawaban Anda:', th: 'คำตอบของคุณ:', en: 'Your answer:' },
   'result.correct.answer': { 'zh-TW': '正確答案：', vi: 'Đáp án đúng:', id: 'Jawaban benar:', th: 'คำตอบที่ถูก:', en: 'Correct answer:' },
+  'result.explanation': { 'zh-TW': '📘 解析', vi: '📘 Giải thích', id: '📘 Penjelasan', th: '📘 คำอธิบาย', en: '📘 Explanation' },
+  'result.legalBasis': { 'zh-TW': '📜 法規依據（全國法規資料庫）', vi: '📜 Căn cứ pháp luật (CSDL pháp luật quốc gia)', id: '📜 Dasar hukum (Basis Data Hukum Nasional)', th: '📜 กฎหมายอ้างอิง (ฐานข้อมูลกฎหมายแห่งชาติ)', en: '📜 Legal basis (Laws & Regulations Database)' },
+  'result.legalBasis.law': { 'zh-TW': '全文', vi: 'Toàn văn', id: 'Teks lengkap', th: 'ฉบับเต็ม', en: 'Full text' },
+  'result.explanation.note': {
+    'zh-TW': '※ 本解析由 AI 輔助產生，法規內容以全國法規資料庫（law.moj.gov.tw）最新條文為準；如對解析有疑慮，請點選該題「💬 反饋」並選「解析有誤」，由管理者確認後修正。',
+    vi: '※ Phần giải thích do AI hỗ trợ tạo ra; nội dung pháp luật lấy theo điều văn mới nhất trên Cơ sở dữ liệu pháp luật quốc gia (law.moj.gov.tw). Nếu có thắc mắc, hãy bấm「💬 Phản hồi」ở câu đó và chọn「Giải thích sai」để quản trị viên kiểm tra và sửa.',
+    id: '※ Penjelasan ini dibuat dengan bantuan AI; isi peraturan mengacu pada pasal terbaru di Basis Data Hukum Nasional (law.moj.gov.tw). Jika ragu, klik「💬 Umpan Balik」pada soal tersebut dan pilih「Penjelasan salah」agar admin memeriksa dan memperbaikinya.',
+    th: '※ คำอธิบายนี้สร้างโดยมี AI ช่วย เนื้อหากฎหมายให้ยึดตามมาตราล่าสุดในฐานข้อมูลกฎหมายแห่งชาติ (law.moj.gov.tw) หากสงสัย กด「💬 แจ้งปัญหา」ที่ข้อนั้นแล้วเลือก「คำอธิบายผิด」เพื่อให้ผู้ดูแลตรวจสอบและแก้ไข',
+    en: '※ Explanations are AI-assisted; for legal content, the latest articles in the Laws & Regulations Database (law.moj.gov.tw) prevail. If in doubt, tap「💬 Feedback」on that question and choose「Wrong explanation」so an administrator can review and correct it.'
+  },
+  'fb.type.explanation': { 'zh-TW': '解析有誤', vi: 'Giải thích sai', id: 'Penjelasan salah', th: 'คำอธิบายผิด', en: 'Wrong explanation' },
   'result.status.hinted': { 'zh-TW': '（已查看答案）', vi: '(Đã xem đáp án)', id: '(Sudah lihat jawaban)', th: '(ดูคำตอบแล้ว)', en: '(Answer viewed)' },
   'result.status.skipped': { 'zh-TW': '（未作答）', vi: '(Chưa trả lời)', id: '(Belum dijawab)', th: '(ไม่ได้ตอบ)', en: '(Skipped)' },
   'result.status.wrong': { 'zh-TW': '（答錯）', vi: '(Sai)', id: '(Salah)', th: '(ผิด)', en: '(Wrong)' },
