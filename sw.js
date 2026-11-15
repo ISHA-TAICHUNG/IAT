@@ -1,24 +1,24 @@
 // Service Worker — 離線快取策略
-const CACHE_NAME = "exam-v20261011a";
+const CACHE_NAME = "exam-v20261115a";
 const STATIC_ASSETS = [
     "./",
     "./index.html",
     "./exam.html",
     "./result.html",
     "./manifest.json",
-    "./css/style.css?v=20261011a",
-    "./js/config.js?v=20261011a",
-    "./js/i18n.js?v=20261011a",
-    "./js/utils.js?v=20261011a",
-    "./js/data-loader.js?v=20261011a",
-    "./js/app.js?v=20261011a",
-    "./js/exam.js?v=20261011a",
-    "./js/result.js?v=20261011a",
+    "./css/style.css?v=20261115a",
+    "./js/config.js?v=20261115a",
+    "./js/i18n.js?v=20261115a",
+    "./js/utils.js?v=20261115a",
+    "./js/data-loader.js?v=20261115a",
+    "./js/app.js?v=20261115a",
+    "./js/exam.js?v=20261115a",
+    "./js/result.js?v=20261115a",
     "./query.html",
-    "./css/query.css?v=20261011a",
-    "./js/query.js?v=20261011a",
+    "./css/query.css?v=20261115a",
+    "./js/query.js?v=20261115a",
     "./exam-query.html",
-    "./js/exam-query.js?v=20261011a",
+    "./js/exam-query.js?v=20261115a",
 ];
 
 // 安裝時避開 HTTP 舊快取，避免新 cache 收到引用舊版 CSS/JS 的 HTML。
